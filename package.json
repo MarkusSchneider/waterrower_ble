@@ -9,7 +9,8 @@
     "serve:node": "npm run build && node dist/main.js",
     "serve": "ts-node src/main.ts",
     "watch": "nodemon src -e ts --exec 'npm run serve'",
-    "test": "jasmine --reporter=jasmine-console-reporter --config=jasmine.json"
+    "test": "jasmine --reporter=jasmine-console-reporter --config=jasmine.json",
+    "lint": "eslint ./src/**.ts --fix"
   },
   "keywords": [
     "WaterRower",
@@ -21,6 +22,7 @@
   "author": "MarkusSchneider",
   "license": "MIT",
   "devDependencies": {
+    "@stylistic/eslint-plugin-ts": "^1.6.0",
     "@types/jasmine": "5.1.4",
     "@types/node": "20.11.16",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
