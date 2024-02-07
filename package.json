@@ -10,7 +10,7 @@
     "serve": "ts-node src/main.ts",
     "watch": "nodemon src -e ts --exec 'npm run serve'",
     "test": "jasmine --reporter=jasmine-console-reporter --config=jasmine.json",
-    "lint": "eslint ./src/**.ts --fix"
+    "lint": "eslint ./src/**/*.ts --fix"
   },
   "keywords": [
     "WaterRower",
@@ -35,5 +35,9 @@
     "rimraf": "5.0.5",
     "ts-node": "10.9.2",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "rxjs": "^7.8.1",
+    "serialport": "^12.0.0"
   }
 }
