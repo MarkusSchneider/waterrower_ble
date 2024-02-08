@@ -13,12 +13,14 @@ import { WaterRower } from './waterrower-serial/waterrower-serial';
 //   console.log('Server running on http://localhost:3000/');
 // });
 try {
-  const waterrower = new WaterRower();
+  const waterrower = new WaterRower({ datapoints: ['stroke_rate', 'kcal_watts', 'strokes_cnt', 'm_s_total'], portName: '/dev/ttyACM0', refreshRate: 1000 });
 
   waterrower.on('initialized', () => {
     waterrower.reset();
     waterrower.startRecording('./recording.txt');
   });
+
+  process.on('SIGINT', () => waterrower.stopRecording())
 
 } catch (error) {
   console.log(error);

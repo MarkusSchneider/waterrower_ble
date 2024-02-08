@@ -28,24 +28,24 @@ export class WaterRower extends events.EventEmitter {
     constructor(options: WaterRowerOptions = {}) {
         super();
 
-        this.dataDirectory = options.dataDirectory || this.dataDirectory;
-        this.refreshRate = options.refreshRate || this.refreshRate;
-        this.baudRate = options.baudRate || this.baudRate;
+        this.dataDirectory = options.dataDirectory ?? this.dataDirectory;
+        this.refreshRate = options.refreshRate ?? this.refreshRate;
+        this.baudRate = options.baudRate ?? this.baudRate;
         this.datapoints = options.datapoints ?? [];
 
-        if (!options.portName) {
+        if (options.portName == null) {
             console.log('No port configured. Attempting to discover...');
 
             this.discoverPort(name => {
                 if (name) {
-                    console.log('Discovered a WaterRower on ' + name + '...');
+                    console.log(`Discovered a WaterRower on ${name} ...`);
                     options.portName = name;
                     this.setupSerialPort(options);
                 } else
                     console.log('We didn\'t find any connected WaterRowers');
             });
         } else {
-            console.log('Setting up serial port on ' + options.portName + '...');
+            console.log(`Setting up serial port on ${options.portName} ...`);
             this.setupSerialPort(options);
         }
 
@@ -88,24 +88,22 @@ export class WaterRower extends events.EventEmitter {
     }
 
     private setupSerialPort(options: WaterRowerOptions) {
-        // setup the serial port
-        // this.port = new SerialPort(options.portName, {
-        //     baudRate: options.baudRate || this.baudRate
-        // });
         this.port = new SerialPort({
             path: options.portName ?? '',
-            baudRate: options.baudRate || this.baudRate,
+            baudRate: options.baudRate ?? this.baudRate,
         });
 
         // setup port events
         this.port.on('open', () => {
             console.log(`A connection to the WaterRower has been established on ${options.portName}`);
             this.initialize();
-            if (options.refreshRate !== 0) setInterval(() => this.requestDataPoints(this.datapoints), this.refreshRate);
+            if (options.refreshRate !== 0) {
+                setInterval(() => this.requestDataPoints(this.datapoints), this.refreshRate);
+            }
         });
-        this.port.on('data', d => {
-            const type = FrameTypes.find(t => t.pattern.test(d));
-            this.reads$.next({ time: Date.now(), type: (type ? type.type : 'other'), data: d });
+        this.port.on('data', data => {
+            const type = FrameTypes.find(t => t.pattern.test(data));
+            this.reads$.next({ time: Date.now(), type: (type?.type ?? 'other'), data: data });
         });
         this.port.on('closed', () => this.close);
         this.port.on('disconnect', () => this.close);
@@ -170,7 +168,7 @@ export class WaterRower extends events.EventEmitter {
 
     /// send a serial message
     private send(value: string): void {
-        if (this.port) {
+        if (this.port != null) {
             this.port.write(value + '\r\n');
         }
     }
@@ -183,6 +181,7 @@ export class WaterRower extends events.EventEmitter {
 
     private close(): void {
         console.log('Closing WaterRower...');
+        this.send('EXIT');
         this.emit('close');
         this.reads$.complete();
         if (this.port) {
@@ -212,9 +211,15 @@ export class WaterRower extends events.EventEmitter {
         };
 
         if (points) {
-            if (Array.isArray(points)) points.forEach(p => req(p));
-            else if (typeof points === 'string') req(points);
-            else throw ('requestDataPoint requires a string, an array of strings, or nothing at all');
+            if (Array.isArray(points)) {
+                points.forEach(p => req(p));
+            }
+            else if (typeof points === 'string') {
+                req(points);
+            }
+            else {
+                throw ('requestDataPoint requires a string, an array of strings, or nothing at all');
+            }
         } else
             DataPoints.forEach(d => req(d.name));
 
@@ -263,7 +268,7 @@ export class WaterRower extends events.EventEmitter {
     }
 
     playRecording(name?: string): void {
-        name = name || 'simulationdata';
+        name = name ?? 'simulationdata';
         const lines = readFileSync(path.join(this.dataDirectory, name), 'utf-8').split(/\r?\n/);
 
         const simdata$: Observable<ReadValue> = from(lines)
@@ -274,7 +279,9 @@ export class WaterRower extends events.EventEmitter {
 
         let firstrow: ReadValue;
         simdata$.subscribe(row => {
-            if (!firstrow) firstrow = row;
+            if (!firstrow) {
+                firstrow = row;
+            }
             const delta = row.time - firstrow.time;
             setTimeout(() => {
                 this.reads$.next({ time: row.time, type: row.type, data: row.data });
