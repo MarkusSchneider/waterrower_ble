@@ -1,76 +1,58 @@
 // import * as SerialPort from 'serialport';
-import { Observable, Subject, Subscription, filter, from, map, of, tap } from 'rxjs';
+import { Observable, Subject, Subscription, concatMap, delay, filter, from, lastValueFrom, map, mergeMap, of, tap, zip } from 'rxjs';
 import { SerialPort } from 'serialport';
 import * as events from 'events';
 import * as path from 'path';
 
 import { appendFileSync, readFileSync, readdirSync } from 'fs';
 import { AverageIntensityDisplayOptions, DisplaySetIntensity, Units } from './enums';
-import { WaterRowerOptions } from './water-rower-options.js';
+import { DEFAULT_WATER_ROWER_OPTIONS, WaterRowerOptions } from './water-rower-options';
 import { ReadValue } from './read-value';
 import { DataPoint } from './data-point';
 import { FrameTypes } from './frame-types';
 import { DataPoints } from './datapoints-config';
 
 export class WaterRower extends events.EventEmitter {
-    private refreshRate: number = 200;
-    private baudRate: number = 19200;
-    private port: SerialPort | null = null;
-    private dataDirectory: string = 'data';
-    private datapoints: string | Array<string>;
     private recordingSubscription: Subscription | null = null;
+    private options: WaterRowerOptions = DEFAULT_WATER_ROWER_OPTIONS;
+    private serialPort: SerialPort | null = null;
 
     // reads$ is all serial messages from the WR
-    // datapoints$ isonly the reads that are a report of a memory location's value 
     public reads$ = new Subject<ReadValue>();
+    // datapoints$ isonly the reads that are a report of a memory location's value 
     public datapoints$: Observable<DataPoint | null> = of();
 
-    constructor(options: WaterRowerOptions = {}) {
+    constructor(optionsFn: (o: WaterRowerOptions) => void) {
         super();
-
-        this.dataDirectory = options.dataDirectory ?? this.dataDirectory;
-        this.refreshRate = options.refreshRate ?? this.refreshRate;
-        this.baudRate = options.baudRate ?? this.baudRate;
-        this.datapoints = options.datapoints ?? [];
-
-        if (options.portName == null) {
-            console.log('No port configured. Attempting to discover...');
-
-            this.discoverPort(name => {
-                if (name) {
-                    console.log(`Discovered a WaterRower on ${name} ...`);
-                    options.portName = name;
-                    this.setupSerialPort(options);
-                } else
-                    console.log('We didn\'t find any connected WaterRowers');
-            });
-        } else {
-            console.log(`Setting up serial port on ${options.portName} ...`);
-            this.setupSerialPort(options);
-        }
+        optionsFn(this.options);
 
         this.setupStreams();
 
         process.on('SIGINT', () => {
             this.close();
         });
-
     }
 
-    private discoverPort(callback: (name?: string) => void) {
-        // SerialPort.list((err, ports) => {
-        //     const p = find(ports, p => includes([
-        //         'Microchip Technology, Inc.', // standard
-        //         'Microchip Technology Inc.' // macOS specific?
-        //     ], p.manufacturer));
+    public connectSerial(): void {
+        if (this.options.portName == null) {
+            console.log('No port configured. Attempting to discover...');
 
-        //     if (p) {
-        //         callback(p.comName);
-        //     }
-        //     else {
-        //         callback();
-        //     }
-        // });
+            this.discoverPort(name => {
+                if (name) {
+                    console.log(`Discovered a WaterRower on ${name} ...`);
+                    this.options.portName = name;
+                    this.setupSerialPort(this.options);
+                } else {
+                    console.log('We didn\'t find any connected WaterRowers');
+                }
+            });
+        } else {
+            console.log(`Setting up serial port on ${this.options.portName} ...`);
+            this.setupSerialPort(this.options);
+        }
+    }
+
+    private discoverPort(callback: (name?: string) => void): void {
         SerialPort.list().then((ports) => {
             const p = ports.find(
                 p => [
@@ -87,33 +69,33 @@ export class WaterRower extends events.EventEmitter {
         });
     }
 
-    private setupSerialPort(options: WaterRowerOptions) {
-        this.port = new SerialPort({
+    private setupSerialPort(options: WaterRowerOptions): void {
+        this.serialPort = new SerialPort({
             path: options.portName ?? '',
-            baudRate: options.baudRate ?? this.baudRate,
+            baudRate: options.baudRate ?? this.options.baudRate,
         });
 
         // setup port events
-        this.port.on('open', () => {
+        this.serialPort.on('open', () => {
             console.log(`A connection to the WaterRower has been established on ${options.portName}`);
             this.initialize();
             if (options.refreshRate !== 0) {
-                setInterval(() => this.requestDataPoints(this.datapoints), this.refreshRate);
+                setInterval(() => this.requestDataPoints(this.options.datapoints), this.options.refreshRate);
             }
         });
-        this.port.on('data', data => {
+        this.serialPort.on('data', data => {
             const type = FrameTypes.find(t => t.pattern.test(data));
             this.reads$.next({ time: Date.now(), type: (type?.type ?? 'other'), data: data });
         });
-        this.port.on('closed', () => this.close);
-        this.port.on('disconnect', () => this.close);
-        this.port.on('error', err => {
+        this.serialPort.on('closed', () => this.close);
+        this.serialPort.on('disconnect', () => this.close);
+        this.serialPort.on('error', err => {
             this.emit('error', err);
             this.close();
         });
     }
 
-    public setupStreams() {
+    public setupStreams(): void {
         // this is the important stream for reading memory locations from the rower
         // IDS is a single, IDD is a double, and IDT is a triple byte memory location
         this.datapoints$ = this.reads$.pipe(
@@ -168,8 +150,8 @@ export class WaterRower extends events.EventEmitter {
 
     /// send a serial message
     private send(value: string): void {
-        if (this.port != null) {
-            this.port.write(value + '\r\n');
+        if (this.serialPort != null) {
+            this.serialPort.write(value + '\r\n');
         }
     }
 
@@ -184,9 +166,9 @@ export class WaterRower extends events.EventEmitter {
         this.send('EXIT');
         this.emit('close');
         this.reads$.complete();
-        if (this.port) {
-            this.port.close(err => console.log(err));
-            this.port = null;
+        if (this.serialPort) {
+            this.serialPort.close(err => console.log(err));
+            this.serialPort = null;
         }
         process.exit();
     }
@@ -213,11 +195,9 @@ export class WaterRower extends events.EventEmitter {
         if (points) {
             if (Array.isArray(points)) {
                 points.forEach(p => req(p));
-            }
-            else if (typeof points === 'string') {
+            } else if (typeof points === 'string') {
                 req(points);
-            }
-            else {
+            } else {
                 throw ('requestDataPoint requires a string, an array of strings, or nothing at all');
             }
         } else
@@ -248,13 +228,13 @@ export class WaterRower extends events.EventEmitter {
         }
     }
 
-    startRecording(name?: string) {
+    startRecording(name?: string): void {
         const now = new Date();
         const fileName = name ?? `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}`;
         this.recordingSubscription = this.reads$
             .pipe(
                 filter(r => r.type != 'pulse'), //pulses are noisy
-                tap(r => appendFileSync(path.join(this.dataDirectory, fileName), JSON.stringify(r) + '\n'))
+                tap(r => appendFileSync(path.join(this.options.dataDirectory, fileName), JSON.stringify(r) + '\n'))
             ).subscribe();
 
     }
@@ -264,29 +244,31 @@ export class WaterRower extends events.EventEmitter {
     }
 
     getRecordings(): Array<string> {
-        return readdirSync(this.dataDirectory);
+        return readdirSync(this.options.dataDirectory);
     }
 
-    playRecording(name?: string): void {
+    playRecording(name?: string): Promise<void> {
         name = name ?? 'simulationdata';
-        const lines = readFileSync(path.join(this.dataDirectory, name), 'utf-8').split(/\r?\n/);
+        const lines = readFileSync(path.join(this.options.dataDirectory, name), 'utf-8').split(/\r?\n/)
+            .filter(value => value?.length > 0)
+            .map(value => JSON.parse(value) as ReadValue);
 
-        const simdata$: Observable<ReadValue> = from(lines)
+        const timeSpans: Array<number> = [];
+        lines.map(value => value.time)
+            .reduce((acc, value) => {
+                const delta = value - acc;
+                timeSpans.push(delta);
+                return value;
+            }, lines[0].time);
+
+        const replay$ = zip(from(timeSpans), from(lines))
             .pipe(
-                filter(value => (value ? true : false)),
-                map(value => JSON.parse(value.toString()))
+                concatMap(value => of(value).pipe(delay(value[0]))),
+                tap(value => this.reads$.next(value[1])),
+                map(() => void 0)
             );
 
-        let firstrow: ReadValue;
-        simdata$.subscribe(row => {
-            if (!firstrow) {
-                firstrow = row;
-            }
-            const delta = row.time - firstrow.time;
-            setTimeout(() => {
-                this.reads$.next({ time: row.time, type: row.type, data: row.data });
-            }, delta);
-        });
+        return lastValueFrom(replay$);
     }
 
     startSimulation(): void {
@@ -343,6 +325,3 @@ export class WaterRower extends events.EventEmitter {
         this.send(value);
     }
 }
-
-
-

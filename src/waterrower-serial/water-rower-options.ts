@@ -1,9 +1,16 @@
 
+export const DEFAULT_WATER_ROWER_OPTIONS: WaterRowerOptions = {
+    baudRate: 19200,
+    dataDirectory: 'data',
+    datapoints: [],
+    portName: '',
+    refreshRate: 200,
+};
 
 export interface WaterRowerOptions {
-    portName?: string;
-    baudRate?: number;
-    refreshRate?: number;
-    dataDirectory?: string;
-    datapoints?: string | Array<string>;
+    baudRate: number;
+    dataDirectory: string;
+    datapoints: string | Array<string>;
+    portName: string;
+    refreshRate: number;
 }

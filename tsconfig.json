@@ -4,7 +4,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "strict": true,
-    "strictFunctionTypes": false,
+    "strictFunctionTypes": true,
     "noImplicitAny": true,
   },
   // Most ts-node options can be specified here using their programmatic names.

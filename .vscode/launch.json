@@ -9,7 +9,8 @@
                 "ts-node/register"
             ],
             "args": [
-                "${workspaceFolder}/src/main.ts"
+                "${workspaceFolder}/src/main.ts",
+                "-p"
             ]
         }
     ]
