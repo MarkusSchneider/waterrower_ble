@@ -6,8 +6,7 @@ import debug from 'debug';
 import { FitnessMachineService } from './ble';
 import bleno from '@abandonware/bleno';
 
-const logger = debug('MAIN');
-
+const logger = debug('starting waterrower_ble service');
 // export const server = http.createServer((req, res) => {
 //   res.writeHead(200, { 'Content-Type': 'application/json' });
 //   res.end(
@@ -52,6 +51,7 @@ function startBLE() {
 
     if (state === 'poweredOn') {
       bleno.startAdvertising('WaterRower', [ftmsService.uuid]);
+      return;
     }
 
     bleno.stopAdvertising();
