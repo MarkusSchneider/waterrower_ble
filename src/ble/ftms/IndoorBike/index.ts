@@ -1,0 +1,1 @@
+export { IndoorBikeFeatureCharacteristic } from './indoor-bike-feature-chracteristic';

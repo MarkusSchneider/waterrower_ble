@@ -1,0 +1,1 @@
+export { FitnessMachineService } from './ftms/ftms-service';

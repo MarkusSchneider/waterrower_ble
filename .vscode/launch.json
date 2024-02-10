@@ -10,7 +10,7 @@
             ],
             "args": [
                 "${workspaceFolder}/src/main.ts",
-                "-p"
+                "-ble"
             ]
         }
     ]

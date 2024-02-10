@@ -11,6 +11,9 @@ import { ReadValue } from './read-value';
 import { DataPoint } from './data-point';
 import { FrameTypes } from './frame-types';
 import { DataPoints } from './datapoints-config';
+import debug from 'debug';
+
+const logger = debug('WR_SERIAL');
 
 export class WaterRower extends events.EventEmitter {
     private recordingSubscription: Subscription | null = null;
@@ -35,19 +38,19 @@ export class WaterRower extends events.EventEmitter {
 
     public connectSerial(): void {
         if (this.options.portName == null) {
-            console.log('No port configured. Attempting to discover...');
+            logger('No port configured. Attempting to discover...');
 
             this.discoverPort(name => {
                 if (name) {
-                    console.log(`Discovered a WaterRower on ${name} ...`);
+                    logger(`Discovered a WaterRower on ${name} ...`);
                     this.options.portName = name;
                     this.setupSerialPort(this.options);
                 } else {
-                    console.log('We didn\'t find any connected WaterRowers');
+                    logger('We didn\'t find any connected WaterRowers');
                 }
             });
         } else {
-            console.log(`Setting up serial port on ${this.options.portName} ...`);
+            logger(`Setting up serial port on ${this.options.portName} ...`);
             this.setupSerialPort(this.options);
         }
     }
@@ -77,7 +80,7 @@ export class WaterRower extends events.EventEmitter {
 
         // setup port events
         this.serialPort.on('open', () => {
-            console.log(`A connection to the WaterRower has been established on ${options.portName}`);
+            logger(`A connection to the WaterRower has been established on ${options.portName}`);
             this.initialize();
             if (options.refreshRate !== 0) {
                 setInterval(() => this.requestDataPoints(this.options.datapoints), this.options.refreshRate);
@@ -157,17 +160,17 @@ export class WaterRower extends events.EventEmitter {
 
     /// initialize the connection    
     private initialize(): void {
-        console.log('Initializing port...');
+        logger('Initializing port...');
         this.send('USB');
     }
 
     private close(): void {
-        console.log('Closing WaterRower...');
+        logger('Closing WaterRower...');
         this.send('EXIT');
         this.emit('close');
         this.reads$.complete();
         if (this.serialPort) {
-            this.serialPort.close(err => console.log(err));
+            this.serialPort.close(err => logger(err));
             this.serialPort = null;
         }
         process.exit();
@@ -175,7 +178,7 @@ export class WaterRower extends events.EventEmitter {
 
     /// reset console
     reset(): void {
-        console.log('Resetting WaterRower...');
+        logger('Resetting WaterRower...');
         this.send('RESET'); //reset the waterrower 
     }
 
@@ -184,7 +187,7 @@ export class WaterRower extends events.EventEmitter {
     /// shortly after the request is made 
     requestDataPoints(points?: string | Array<string>): void {
         const req = (name: string): void => {
-            console.log('requesting ' + name);
+            logger('requesting ' + name);
             const dataPoint = DataPoints.find(d => d.name == name);
             if (dataPoint == null) {
                 return;
