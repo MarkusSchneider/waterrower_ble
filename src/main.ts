@@ -22,7 +22,7 @@ function replayRecording(waterrower: WaterRower): void {
   });
 
   waterrower.playRecording('recording.txt').then(() => {
-    // console.log('replay session finished');
+    console.log('replay session finished');
   });
 }
 function startRecording(waterrower: WaterRower): void {

@@ -1,5 +1,5 @@
 // import * as SerialPort from 'serialport';
-import { Observable, Subject, Subscription, concatMap, delay, filter, from, lastValueFrom, map, mergeMap, of, tap, zip } from 'rxjs';
+import { Observable, Subject, Subscription, concatMap, delay, filter, from, lastValueFrom, map, of, tap, zip } from 'rxjs';
 import { SerialPort } from 'serialport';
 import * as events from 'events';
 import * as path from 'path';
