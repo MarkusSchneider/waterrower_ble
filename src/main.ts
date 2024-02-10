@@ -44,8 +44,9 @@ function startWorkout(waterrower: WaterRower): void {
 }
 
 function startBLE() {
-  const ftmsService = new FitnessMachineService();
+  debug('Start BLE service');
 
+  const ftmsService = new FitnessMachineService();
   bleno.on('stateChange', state => {
     debug(`BLENO stateChange. State = ${state}`);
 
