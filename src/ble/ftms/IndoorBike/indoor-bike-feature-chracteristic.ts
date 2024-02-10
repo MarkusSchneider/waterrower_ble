@@ -1,4 +1,4 @@
-import { Characteristic, Descriptor } from 'bleno';
+import { Characteristic, Descriptor } from '@abandonware/bleno';
 import debug from 'debug';
 import { CharacteristicUserDescriptionUUID, FitnessMachineFeatureUUID } from '../../uuids';
 import { FitnessMachineFeatureFlag } from './indoor-bike-data';

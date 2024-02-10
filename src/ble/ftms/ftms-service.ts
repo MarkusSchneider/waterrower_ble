@@ -1,7 +1,7 @@
-import { PrimaryService } from 'bleno';
 import debug from 'debug';
 import { FitnessMachineServiceUUID } from '../uuids';
 import { IndoorBikeFeatureCharacteristic } from './IndoorBike';
+import { PrimaryService } from '@abandonware/bleno';
 const logger = debug('FTMS_SRV');
 
 export class FitnessMachineService extends PrimaryService {

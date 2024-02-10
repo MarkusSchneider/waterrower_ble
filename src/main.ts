@@ -4,7 +4,7 @@ import { exit } from 'process';
 import { WaterRower } from './waterrower-serial/waterrower-serial';
 import debug from 'debug';
 import { FitnessMachineService } from './ble';
-import bleno from 'bleno';
+import bleno from '@abandonware/bleno';
 
 const logger = debug('MAIN');
 
