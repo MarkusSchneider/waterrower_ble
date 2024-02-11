@@ -86,7 +86,7 @@ export class WaterRower extends events.EventEmitter {
                 setInterval(() => this.requestDataPoints(this.options.datapoints), this.options.refreshRate);
             }
         });
-        this.serialPort.on('data', data => {
+        this.serialPort.on('data', (data: string) => {
             const type = FrameTypes.find(t => t.pattern.test(data));
             this.reads$.next({ time: Date.now(), type: (type?.type ?? 'other'), data: data });
         });
@@ -102,21 +102,22 @@ export class WaterRower extends events.EventEmitter {
         // this is the important stream for reading memory locations from the rower
         // IDS is a single, IDD is a double, and IDT is a triple byte memory location
         this.datapoints$ = this.reads$.pipe(
-            filter(d => d.type === 'datapoint'),
-            map(d => {
+            filter(data => data.type === 'datapoint'),
+            map(data => {
                 const pattern = FrameTypes.find(t => t.type == 'datapoint')?.pattern;
                 if (pattern == null) {
                     return null;
                 }
 
-                const m = pattern.exec(d.data);
-                if (m == null) {
+                const m = pattern.exec(data.data);
+                if (m == null || m.length == 0) {
+                    logger(`parsing error: ${data.data}`);
                     return null;
                 }
 
                 const dataPoint: DataPoint =
                 {
-                    time: new Date(d.time),
+                    time: new Date(data.time),
                     name: DataPoints.find(point => point.address == m[2])?.name,
                     length: { 'S': 1, 'D': 2, 'T': 3 }[m[1]] ?? 0,
                     address: m[2],

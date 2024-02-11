@@ -3,8 +3,6 @@ import debug from 'debug';
 import { CharacteristicUserDescriptionUUID, FitnessMachineFeatureUUID } from '../../uuids';
 import { FitnessMachineFeatureFlag } from './indoor-bike-data';
 
-
-
 const logger = debug('FTMS');
 export class IndoorBikeFeatureCharacteristic extends Characteristic {
     public constructor() {

@@ -4,3 +4,4 @@ type UUID = `${Digit}${Digit}${Digit}${Digit}`;
 export const CharacteristicUserDescriptionUUID: UUID = '2901';
 export const FitnessMachineFeatureUUID: UUID = '2ACC';
 export const FitnessMachineServiceUUID: UUID = '1826';
+export const IndoorBikeDataUUID: UUID = '2AD2';

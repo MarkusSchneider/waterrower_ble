@@ -5,8 +5,10 @@ import { WaterRower } from './waterrower-serial/waterrower-serial';
 import debug from 'debug';
 import { FitnessMachineService } from './ble';
 import bleno from '@abandonware/bleno';
+import { tap } from 'rxjs';
 
-const logger = debug('starting waterrower_ble service');
+const logger = debug('MAIN');
+logger('start waterrower ble service')
 // export const server = http.createServer((req, res) => {
 //   res.writeHead(200, { 'Content-Type': 'application/json' });
 //   res.end(
@@ -20,11 +22,15 @@ const logger = debug('starting waterrower_ble service');
 
 
 function replayRecording(waterrower: WaterRower): void {
+  startBLE(waterrower);
+  waterrower.datapoints$.subscribe({
+    next: data => logger(data),
+    complete: () => logger('completed'),
+  });
   waterrower.reads$.subscribe({
     next: data => logger(data),
     complete: () => logger('completed'),
   });
-
   waterrower.playRecording('recording.txt').then(() => {
     logger('replay session finished');
   });
@@ -42,12 +48,25 @@ function startWorkout(waterrower: WaterRower): void {
   });
 }
 
-function startBLE() {
-  debug('Start BLE service');
+function startBLE(waterrower: WaterRower): void {
+  logger('Start BLE service');
 
   const ftmsService = new FitnessMachineService();
+  waterrower.datapoints$
+    .pipe(tap(data => {
+      if (data?.name === 'stroke_rate') {
+        ftmsService.updateData(null, Number(data.value) * 2);
+        return;
+      }
+      if (data?.name === 'kcal_watts') {
+        ftmsService.updateData(Number(data.value), null);
+        return;
+      }
+    }))
+    .subscribe();
+
   bleno.on('stateChange', state => {
-    debug(`BLENO stateChange. State = ${state}`);
+    logger(`BLENO stateChange. State = ${state}`);
 
     if (state === 'poweredOn') {
       bleno.startAdvertising('WaterRower', [ftmsService.uuid]);
@@ -56,6 +75,17 @@ function startBLE() {
 
     bleno.stopAdvertising();
   });
+
+  bleno.on('advertisingStart', error => {
+    logger(`BLENO advertisingStart. Error = ${error}`);
+    if (error != null) {
+      return;
+    }
+
+    bleno.setServices([ftmsService], error => {
+      logger(`BLENO set ftmsService: ${error ?? 'success'} `)
+    });
+  })
 }
 
 function main(): void {
@@ -76,7 +106,7 @@ function main(): void {
       replayRecording(waterrower);
       break;
     case '-ble':
-      startBLE();
+      startBLE(waterrower);
       break;
   }
 }
