@@ -1,2 +1,3 @@
-export DEBUG=MAIN,FTMS,WR_SERIAL
-npm run serve -- -r
+export DEBUG=MAIN,FTMS
+# DEBUG=MAIN,FTMS
+npm run serve -- -p

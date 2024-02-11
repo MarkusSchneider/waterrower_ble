@@ -53,16 +53,25 @@ export class IndoorBikeDataCharacteristic extends Characteristic {
             return;
         }
 
-        logger(`[${IndoorBikeDataUUID}][IndoorBikeDataCharacteristic] updateData. Power = ${power}, Cadence = ${cadence}`);
+        if (power === Number.NaN || cadence === Number.NaN) {
+            logger(`[${IndoorBikeDataUUID}][IndoorBikeDataCharacteristic] error invalid values. Power = ${power}, Cadence = ${cadence}`);
+        }
 
-        this._power = power ?? this._power;
-        this._cadence = cadence ?? this._cadence;
+        cadence = cadence == null ? this._cadence : cadence;
+        power = power == null ? this._power : power;
+        if (power == 0 && cadence > 0) {
+            power = this._power;
+        }
+
+        this._power = power;
+        this._cadence = cadence;
 
         const data = Buffer.alloc(6);
         data.writeUInt16LE(IndoorBikeDataFlag.InstantaneousCadence | IndoorBikeDataFlag.InstantaneousPowerPresent | IndoorBikeDataFlag.MoreData);
-        data.writeUInt16LE(this._cadence, 2);
-        data.writeUInt16LE(this._power, 4);
+        data.writeUInt16LE(this._cadence * 8, 2);
+        data.writeUInt16LE(this._power * 1.5, 4);
 
         this._updateValueCallback(data);
+
     }
 }

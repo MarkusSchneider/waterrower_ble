@@ -24,14 +24,14 @@ function startRecording(waterrower: WaterRower): void {
   logger('start recording');
   waterrower.connectSerial();
   waterrower.on('initialized', () => {
-    logger('waterrower initialized start recording');
-
     waterrower.reset();
+    startBLE(waterrower);
     waterrower.startRecording('recording.txt');
   });
 }
 
 function startWorkout(waterrower: WaterRower): void {
+  logger('start workout');
   waterrower.connectSerial();
   waterrower.on('initialized', () => {
     waterrower.reset();
@@ -40,21 +40,18 @@ function startWorkout(waterrower: WaterRower): void {
 }
 
 function replayRecording(waterrower: WaterRower): void {
+  logger('replay recording');
   startBLE(waterrower);
-  waterrower.datapoints$.subscribe({
-    next: data => logger(data),
-    complete: () => logger('completed'),
-  });
-  waterrower.reads$.subscribe({
-    next: data => logger(data),
-    complete: () => logger('completed'),
-  });
+
+  // waterrower.datapoints$.subscribe({
+  //   next: data => logger(data),
+  //   complete: () => logger('completed'),
+  // });
+
   waterrower.playRecording('recording.txt').then(() => {
     logger('replay session finished');
   });
 }
-
-
 
 function startBLE(waterrower: WaterRower): void {
   logger('Start BLE service');
@@ -63,11 +60,11 @@ function startBLE(waterrower: WaterRower): void {
   waterrower.datapoints$
     .pipe(tap(data => {
       if (data?.name === 'stroke_rate') {
-        ftmsService.updateData(null, Number(data.value) * 2);
+        ftmsService.updateData(null, Number('0x' + data.value));
         return;
       }
       if (data?.name === 'kcal_watts') {
-        ftmsService.updateData(Number(data.value), null);
+        ftmsService.updateData(Number('0x' + data.value), null);
         return;
       }
     }))
