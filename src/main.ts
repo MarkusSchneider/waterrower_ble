@@ -20,6 +20,24 @@ logger('start waterrower ble service')
 //   logger('Server running on http://localhost:3000/');
 // });
 
+function startRecording(waterrower: WaterRower): void {
+  logger('start recording');
+  waterrower.connectSerial();
+  waterrower.on('initialized', () => {
+    logger('waterrower initialized start recording');
+
+    waterrower.reset();
+    waterrower.startRecording('recording.txt');
+  });
+}
+
+function startWorkout(waterrower: WaterRower): void {
+  waterrower.connectSerial();
+  waterrower.on('initialized', () => {
+    waterrower.reset();
+    startBLE(waterrower);
+  });
+}
 
 function replayRecording(waterrower: WaterRower): void {
   startBLE(waterrower);
@@ -35,18 +53,8 @@ function replayRecording(waterrower: WaterRower): void {
     logger('replay session finished');
   });
 }
-function startRecording(waterrower: WaterRower): void {
-  waterrower.on('initialized', () => {
-    waterrower.reset();
-    waterrower.startRecording('recording.txt');
-  });
-}
 
-function startWorkout(waterrower: WaterRower): void {
-  waterrower.on('initialized', () => {
-    waterrower.reset();
-  });
-}
+
 
 function startBLE(waterrower: WaterRower): void {
   logger('Start BLE service');

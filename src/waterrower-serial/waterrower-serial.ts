@@ -1,10 +1,9 @@
-// import * as SerialPort from 'serialport';
 import { Observable, Subject, Subscription, concatMap, delay, filter, from, lastValueFrom, map, of, tap, zip } from 'rxjs';
 import { SerialPort } from 'serialport';
 import * as events from 'events';
 import * as path from 'path';
 
-import { appendFileSync, readFileSync, readdirSync } from 'fs';
+import { appendFileSync, existsSync, fstat, readFileSync, readdirSync, unlinkSync } from 'fs';
 import { AverageIntensityDisplayOptions, DisplaySetIntensity, Units } from './enums';
 import { DEFAULT_WATER_ROWER_OPTIONS, WaterRowerOptions } from './water-rower-options';
 import { ReadValue } from './read-value';
@@ -87,8 +86,10 @@ export class WaterRower extends events.EventEmitter {
             }
         });
         this.serialPort.on('data', (data: string) => {
+            logger(`read serial: ${data}`);
+
             const type = FrameTypes.find(t => t.pattern.test(data));
-            this.reads$.next({ time: Date.now(), type: (type?.type ?? 'other'), data: data });
+            this.reads$.next({ time: Date.now(), type: (type?.type ?? 'other'), data: data.toString() });
         });
         this.serialPort.on('closed', () => this.close);
         this.serialPort.on('disconnect', () => this.close);
@@ -235,10 +236,18 @@ export class WaterRower extends events.EventEmitter {
     startRecording(name?: string): void {
         const now = new Date();
         const fileName = name ?? `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}`;
+
+        const filePath = path.join(this.options.dataDirectory, fileName);
+        if (existsSync(filePath)) {
+            unlinkSync(filePath)
+        }
+
         this.recordingSubscription = this.reads$
             .pipe(
                 filter(r => r.type != 'pulse'), //pulses are noisy
-                tap(r => appendFileSync(path.join(this.options.dataDirectory, fileName), JSON.stringify(r) + '\n'))
+                map(r => JSON.stringify(r)),
+                tap(json => logger(`save recording ${json}`)),
+                tap(json => appendFileSync(filePath, json + '\n'))
             ).subscribe();
 
     }
@@ -273,10 +282,6 @@ export class WaterRower extends events.EventEmitter {
             );
 
         return lastValueFrom(replay$);
-    }
-
-    startSimulation(): void {
-        this.playRecording();
     }
 
     /// set up new workout session on the WR with set distance
