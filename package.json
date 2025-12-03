@@ -1,7 +1,7 @@
 {
   "name": "waterrower_ble",
   "version": "1.0.0",
-  "description": "Publish WaterRower Data collected via a serial S4 communication as bluetooth low energy messages. A WaterRower can then used by Training Platforms like Zwift, Kinomap, IndieVelo, ...",
+  "description": "WaterRower training system with S4 monitor integration, heart rate monitoring, web interface, FIT file generation, and Garmin Connect upload",
   "main": "main.js",
   "scripts": {
     "clean": "rimraf ./dist",
@@ -22,25 +22,32 @@
   "author": "MarkusSchneider",
   "license": "MIT",
   "dependencies": {
-    "@abandonware/bleno": "0.6.1",
-    "debug": "4.3.4",
-    "rxjs": "7.8.1",
-    "serialport": "12.0.0"
+    "@abandonware/bleno": "0.6.2",
+    "@abandonware/noble": "1.9.2-26",
+    "cors": "2.8.5",
+    "debug": "4.4.3",
+    "easy-fit": "0.0.8",
+    "express": "5.1.0",
+    "garmin-connect": "1.6.2",
+    "rxjs": "7.8.2",
+    "serialport": "13.0.0"
   },
   "devDependencies": {
-    "@stylistic/eslint-plugin-ts": "1.6.0",
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.5",
+    "@stylistic/eslint-plugin-ts": "4.4.1",
     "@types/debug": "4.1.12",
-    "@types/jasmine": "5.1.4",
-    "@types/node": "20.11.16",
-    "@typescript-eslint/eslint-plugin": "6.21.0",
-    "@typescript-eslint/parser": "6.21.0",
-    "eslint": "8.56.0",
-    "jasmine": "5.1.0",
+    "@types/jasmine": "5.1.13",
+    "@types/node": "24.10.1",
+    "@typescript-eslint/eslint-plugin": "8.48.0",
+    "@typescript-eslint/parser": "8.48.0",
+    "eslint": "9.39.1",
+    "jasmine": "5.12.0",
     "jasmine-console-reporter": "3.1.0",
-    "nodemon": "3.0.3",
+    "nodemon": "3.1.11",
     "npm-run-all": "4.1.5",
-    "rimraf": "5.0.5",
+    "rimraf": "6.1.2",
     "ts-node": "10.9.2",
-    "typescript": "5.3.3"
+    "typescript": "5.9.3"
   }
 }

@@ -1,24 +1,16 @@
-// import http from 'http';
-
-import { exit } from 'process';
-import { WaterRower } from './waterrower-serial/waterrower-serial';
 import debug from 'debug';
-import { FitnessMachineService } from './ble';
-import bleno from '@abandonware/bleno';
+import { exit } from 'process';
 import { tap } from 'rxjs';
 
-const logger = debug('MAIN');
-logger('start waterrower ble service')
-// export const server = http.createServer((req, res) => {
-//   res.writeHead(200, { 'Content-Type': 'application/json' });
-//   res.end(
-//     JSON.stringify({ data: 'It Works!' })
-//   );
-// });
+import bleno = require('@abandonware/bleno');
 
-// server.listen(3000, () => {
-//   logger('Server running on http://localhost:3000/');
-// });
+import { FitnessMachineService } from './ble';
+import { HeartRateMonitor } from './ble/heart-rate-monitor';
+import { WaterRower } from './waterrower-serial/waterrower-serial';
+import { WebServer } from './web-server/web-server';
+
+const logger = debug('MAIN');
+logger('Starting WaterRower Training System...');
 
 function startRecording(waterrower: WaterRower): void {
   logger('start recording');
@@ -93,33 +85,72 @@ function startBLE(waterrower: WaterRower): void {
   })
 }
 
-function main(): void {
-  const waterrower = new WaterRower(options => {
-    options.datapoints = ['stroke_rate', 'kcal_watts', 'strokes_cnt', 'm_s_total'];
-    options.portName = '/dev/ttyACM0';
+function createWaterRower(): WaterRower {
+  return new WaterRower(options => {
+    options.datapoints = ['stroke_rate', 'kcal_watts', 'strokes_cnt', 'm_s_total', 'total_kcal', 'ms_average'];
+    options.portName = process.env.WATERROWER_PORT || '/dev/ttyACM0';
     options.refreshRate = 1000;
   });
+}
 
-  switch (process.argv[2]) {
-    case '-w':
-      startWorkout(waterrower);
-      break;
-    case '-r':
-      startRecording(waterrower);
-      break;
-    case '-p':
-      replayRecording(waterrower);
-      break;
-    case '-ble':
-      startBLE(waterrower);
-      break;
+function main(): void {
+  // Check for command line arguments for legacy modes
+  const mode = process.argv[2];
+  startWebServer();
+
+  if (mode === '-w') {
+    startWorkout(createWaterRower());
+    return;
   }
+
+  if (mode === '-r') {
+    startRecording(createWaterRower());
+    return;
+  }
+
+  if (mode === '-p') {
+    replayRecording(createWaterRower());
+    return;
+  }
+
+  if (mode === '-ble') {
+    startBLE(createWaterRower());
+    return;
+  }
+}
+
+function startWebServer(): void {
+  logger('Starting web server mode...');
+
+  // Initialize heart rate monitor (optional)
+  const heartRateMonitor = new HeartRateMonitor();
+
+  // Optional: Load Garmin credentials from environment variables
+  const garminCredentials = process.env.GARMIN_EMAIL && process.env.GARMIN_PASSWORD ? {
+    email: process.env.GARMIN_EMAIL,
+    password: process.env.GARMIN_PASSWORD
+  } : undefined;
+
+  if (garminCredentials) {
+    logger('Garmin credentials loaded from environment');
+  }
+
+  // Create and start web server
+  const webServer = new WebServer({
+    port: parseInt(process.env.PORT || '3000'),
+    waterRower: createWaterRower(),
+    heartRateMonitor,
+    garminCredentials,
+    fitFilesDirectory: './data/fit-files'
+  });
+
+  webServer.start();
 }
 
 try {
   main();
 } catch (error) {
-  logger(error);
+  console.error(error);
   exit(1);
 }
 

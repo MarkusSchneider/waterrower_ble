@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaterRower Training</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .status-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .metric-unit {
+            font-size: 0.8em;
+            color: #999;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-start {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-stop {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-pause {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .state-indicator {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .state-idle {
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+
+        .state-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .state-paused {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .state-finished {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .garmin-config {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .session-history {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .session-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-info {
+            flex: 1;
+        }
+
+        .session-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #10b981;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-left: 10px;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .recording {
+            animation: pulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🚣 WaterRower Training</h1>
+            <p>Track your rowing sessions with heart rate monitoring and Garmin Connect integration</p>
+        </header>
+
+        <!-- Status Card -->
+        <div class="card">
+            <h2>Current Session</h2>
+            <div style="margin-bottom: 15px;">
+                Status: <span id="sessionState" class="state-indicator state-idle">IDLE</span>
+            </div>
+
+            <div class="status-display">
+                <div class="metric">
+                    <div class="metric-label">Time</div>
+                    <div class="metric-value">
+                        <span id="timeValue">0:00</span>
+                    </div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Distance</div>
+                    <div class="metric-value">
+                        <span id="distanceValue">0</span>
+                        <span class="metric-unit">m</span>
+                    </div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Stroke Rate</div>
+                    <div class="metric-value">
+                        <span id="strokeRateValue">0</span>
+                        <span class="metric-unit">SPM</span>
+                    </div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Power</div>
+                    <div class="metric-value">
+                        <span id="powerValue">0</span>
+                        <span class="metric-unit">W</span>
+                    </div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Heart Rate</div>
+                    <div class="metric-value">
+                        <span id="heartRateValue">--</span>
+                        <span class="metric-unit">BPM</span>
+                    </div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Calories</div>
+                    <div class="metric-value">
+                        <span id="caloriesValue">0</span>
+                        <span class="metric-unit">kcal</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="btnStart" class="btn-start" onclick="startSession()">Start Training</button>
+                <button id="btnPause" class="btn-pause" onclick="pauseSession()" disabled>Pause</button>
+                <button id="btnResume" class="btn-pause hidden" onclick="resumeSession()">Resume</button>
+                <button id="btnStop" class="btn-stop" onclick="stopSession()" disabled>Stop & Save</button>
+            </div>
+        </div>
+
+        <!-- Garmin Configuration -->
+        <div class="card garmin-config">
+            <h2>⚙️ Garmin Connect Configuration</h2>
+            <div id="garminAlert" class="hidden"></div>
+            <div class="input-group">
+                <label for="garminEmail">Email:</label>
+                <input type="email" id="garminEmail" placeholder="your@email.com">
+            </div>
+            <div class="input-group">
+                <label for="garminPassword">Password:</label>
+                <input type="password" id="garminPassword" placeholder="Your Garmin password">
+            </div>
+            <button class="btn-secondary" onclick="configureGarmin()">Save & Test Connection</button>
+            <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                Status: <span id="garminStatus">Not configured</span>
+            </p>
+        </div>
+
+        <!-- Session History -->
+        <div class="card">
+            <h2>📊 Session History</h2>
+            <div id="sessionHistory" class="session-history">
+                <p style="color: #999; text-align: center; padding: 20px;">No sessions yet. Start your first training!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+        let updateInterval = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkGarminStatus();
+            loadSessionHistory();
+            startStatusPolling();
+        });
+
+        function startStatusPolling() {
+            updateInterval = setInterval(updateStatus, 1000);
+        }
+
+        async function updateStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/session/status`);
+                const data = await response.json();
+
+                updateUI(data);
+            } catch (error) {
+                console.error('Status update error:', error);
+            }
+        }
+
+        function updateUI(data) {
+            const stateIndicator = document.getElementById('sessionState');
+            stateIndicator.textContent = data.state.toUpperCase();
+            stateIndicator.className = 'state-indicator state-' + data.state;
+
+            const btnStart = document.getElementById('btnStart');
+            const btnPause = document.getElementById('btnPause');
+            const btnResume = document.getElementById('btnResume');
+            const btnStop = document.getElementById('btnStop');
+
+            if (data.state === 'active') {
+                btnStart.disabled = true;
+                btnPause.disabled = false;
+                btnResume.classList.add('hidden');
+                btnStop.disabled = false;
+                stateIndicator.classList.add('recording');
+            } else if (data.state === 'paused') {
+                btnStart.disabled = true;
+                btnPause.classList.add('hidden');
+                btnResume.classList.remove('hidden');
+                btnStop.disabled = false;
+                stateIndicator.classList.remove('recording');
+            } else if (data.state === 'idle') {
+                btnStart.disabled = false;
+                btnPause.disabled = true;
+                btnResume.classList.add('hidden');
+                btnStop.disabled = true;
+                stateIndicator.classList.remove('recording');
+            }
+
+            if (data.session) {
+                const s = data.session;
+                document.getElementById('timeValue').textContent = formatTime(s.duration);
+                document.getElementById('distanceValue').textContent = Math.round(s.distance || 0);
+                document.getElementById('strokeRateValue').textContent = '--'; // Will be updated from datapoints
+                document.getElementById('powerValue').textContent = Math.round(s.avgPower || 0);
+                document.getElementById('heartRateValue').textContent = s.avgHeartRate ? Math.round(s.avgHeartRate) : '--';
+                document.getElementById('caloriesValue').textContent = Math.round(s.totalCalories || 0);
+            }
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        async function startSession() {
+            try {
+                const response = await fetch(`${API_BASE}/session/start`, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', 'Training session started!');
+                } else {
+                    showAlert('error', data.error || 'Failed to start session');
+                }
+            } catch (error) {
+                showAlert('error', 'Error starting session: ' + error.message);
+            }
+        }
+
+        async function stopSession() {
+            try {
+                const response = await fetch(`${API_BASE}/session/stop`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ autoUpload: true })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    let message = 'Session saved! FIT file generated.';
+                    if (data.garminUpload && data.garminUpload.success) {
+                        message += ' Uploaded to Garmin Connect!';
+                    }
+                    showAlert('success', message);
+                    loadSessionHistory();
+                } else {
+                    showAlert('error', data.error || 'Failed to stop session');
+                }
+            } catch (error) {
+                showAlert('error', 'Error stopping session: ' + error.message);
+            }
+        }
+
+        async function pauseSession() {
+            try {
+                const response = await fetch(`${API_BASE}/session/pause`, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', 'Session paused');
+                }
+            } catch (error) {
+                showAlert('error', 'Error pausing session: ' + error.message);
+            }
+        }
+
+        async function resumeSession() {
+            try {
+                const response = await fetch(`${API_BASE}/session/resume`, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', 'Session resumed');
+                }
+            } catch (error) {
+                showAlert('error', 'Error resuming session: ' + error.message);
+            }
+        }
+
+        async function configureGarmin() {
+            const email = document.getElementById('garminEmail').value;
+            const password = document.getElementById('garminPassword').value;
+
+            if (!email || !password) {
+                showGarminAlert('error', 'Please enter both email and password');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/garmin/configure`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showGarminAlert('success', 'Garmin Connect configured successfully!');
+                    document.getElementById('garminPassword').value = '';
+                    checkGarminStatus();
+                } else {
+                    showGarminAlert('error', data.error || 'Configuration failed');
+                }
+            } catch (error) {
+                showGarminAlert('error', 'Error: ' + error.message);
+            }
+        }
+
+        async function checkGarminStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/garmin/status`);
+                const data = await response.json();
+
+                const statusText = data.configured && data.authenticated ?
+                    '✅ Connected' :
+                    (data.configured ? '⚠️ Configured but not authenticated' : '❌ Not configured');
+
+                document.getElementById('garminStatus').textContent = statusText;
+            } catch (error) {
+                console.error('Error checking Garmin status:', error);
+            }
+        }
+
+        async function loadSessionHistory() {
+            try {
+                const response = await fetch(`${API_BASE}/sessions`);
+                const data = await response.json();
+
+                const historyDiv = document.getElementById('sessionHistory');
+
+                if (!data.sessions || data.sessions.length === 0) {
+                    historyDiv.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No sessions yet. Start your first training!</p>';
+                    return;
+                }
+
+                historyDiv.innerHTML = data.sessions.reverse().map(session => `
+          <div class="session-item">
+            <div class="session-info">
+              <strong>${new Date(session.startTime).toLocaleString()}</strong>
+              ${session.uploadedToGarmin ? '<span class="badge">Uploaded</span>' : ''}
+              <br>
+              <small>
+                ${Math.round(session.distance)}m • ${formatTime(session.duration)} • 
+                ${Math.round(session.totalCalories || 0)} kcal
+                ${session.avgHeartRate ? ' • ♥ ' + Math.round(session.avgHeartRate) + ' BPM' : ''}
+              </small>
+            </div>
+            <div class="session-actions">
+              ${!session.uploadedToGarmin ? `
+                <button class="btn-secondary" onclick="uploadToGarmin('${session.id}')">
+                  Upload to Garmin
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `).join('');
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        async function uploadToGarmin(sessionId) {
+            try {
+                const response = await fetch(`${API_BASE}/garmin/upload/${sessionId}`, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', 'Uploaded to Garmin Connect!');
+                    loadSessionHistory();
+                } else {
+                    showAlert('error', data.error || 'Upload failed');
+                }
+            } catch (error) {
+                showAlert('error', 'Error: ' + error.message);
+            }
+        }
+
+        function showAlert(type, message) {
+            // Create temporary alert at top of first card
+            const card = document.querySelector('.card');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            card.insertBefore(alert, card.firstChild);
+
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        function showGarminAlert(type, message) {
+            const alertDiv = document.getElementById('garminAlert');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.classList.remove('hidden');
+
+            setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+        }
+    </script>
+</body>
+
+</html>
