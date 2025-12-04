@@ -3,8 +3,8 @@ import EasyFit, { FitFileData } from 'easy-fit';
 import { writeFileSync } from 'fs';
 
 import {
-  SessionSummary,
-  TrainingDataPoint,
+    SessionSummary,
+    TrainingDataPoint,
 } from '../training/training-session';
 
 const logger = debug('FIT_GENERATOR');
@@ -118,7 +118,7 @@ export class FitFileGenerator {
         const buffer = Buffer.from(this.easyFit.encode(fitData));
 
         // Save to file
-        writeFileSync(options.outputPath, buffer);
+        writeFileSync(options.outputPath, buffer, { encoding: 'utf-8' });
         logger(`FIT file saved to: ${options.outputPath}`);
 
         return buffer;

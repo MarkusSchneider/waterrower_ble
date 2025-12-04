@@ -1,6 +1,7 @@
 import debug from 'debug';
 import { readFileSync } from 'fs';
 import { GarminConnect } from 'garmin-connect';
+import { UploadFileType } from 'garmin-connect/dist/garmin/types';
 
 const logger = debug('GARMIN_UPLOADER');
 
@@ -62,14 +63,11 @@ export class GarminUploader {
             logger(`Uploading FIT file: ${fitFilePath}`);
 
             // Read the FIT file
-            const fitData = readFileSync(fitFilePath);
+            const fitData = readFileSync(fitFilePath, { encoding: 'utf-8' });
 
             // Upload to Garmin Connect
             // The garmin-connect library expects the file as a buffer
-            const result: any = await (this.garminClient as any).uploadActivity(fitData as any, {
-                fileType: 'fit',
-                activityName: 'WaterRower Indoor Rowing'
-            });
+            const result: any = await this.garminClient.uploadActivity(fitData, UploadFileType.fit);
 
             logger(`Upload successful. Activity ID: ${result?.activityId}`);
 

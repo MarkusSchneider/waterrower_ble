@@ -88,7 +88,7 @@ function startBLE(waterrower: WaterRower): void {
 function createWaterRower(): WaterRower {
   return new WaterRower(options => {
     options.datapoints = ['stroke_rate', 'kcal_watts', 'strokes_cnt', 'm_s_total', 'total_kcal', 'ms_average'];
-    options.portName = process.env.WATERROWER_PORT || '/dev/ttyACM0';
+    options.portName = process.env.WATERROWER_PORT || null;
     options.refreshRate = 1000;
   });
 }
