@@ -76,62 +76,37 @@ export class WebServer {
 
     private setupRoutes(): void {
         // Health check
-        this.app.get('/api/health', (req, res) => {
-            res.json({ status: 'ok', timestamp: new Date() });
-        });
+        this.app.get('/api/health', (req, res) => { res.json({ status: 'ok', timestamp: new Date() }); });
 
         // Get current session status
-        this.app.get('/api/session/status', (req, res) => {
-            this.handleGetStatus(req, res);
-        });
+        this.app.get('/api/session/status', (req, res) => { this.handleGetStatus(req, res); });
 
         // Start training session
-        this.app.post('/api/session/start', async (req, res) => {
-            await this.handleStartSession(req, res);
-        });
+        this.app.post('/api/session/start', async (req, res) => { await this.handleStartSession(req, res); });
 
         // Stop training session
-        this.app.post('/api/session/stop', async (req, res) => {
-            await this.handleStopSession(req, res);
-        });
+        this.app.post('/api/session/stop', async (req, res) => { await this.handleStopSession(req, res); });
 
         // Pause training session
-        this.app.post('/api/session/pause', (req, res) => {
-            this.handlePauseSession(req, res);
-        });
+        this.app.post('/api/session/pause', (req, res) => { this.handlePauseSession(req, res); });
 
         // Resume training session
-        this.app.post('/api/session/resume', (req, res) => {
-            this.handleResumeSession(req, res);
-        });
+        this.app.post('/api/session/resume', (req, res) => { this.handleResumeSession(req, res); });
 
         // Get current session data
-        this.app.get('/api/session/data', (req, res) => {
-            this.handleGetSessionData(req, res);
-        });
+        this.app.get('/api/session/data', (req, res) => { this.handleGetSessionData(req, res); });
 
         // Get session history
-        this.app.get('/api/sessions', (req, res) => {
-            res.json({ sessions: this.sessionHistory });
-        });
+        this.app.get('/api/sessions', (req, res) => { res.json({ sessions: this.sessionHistory }); });
 
         // Configure Garmin credentials
-        this.app.post('/api/garmin/configure', async (req, res) => {
-            await this.handleConfigureGarmin(req, res);
-        });
+        this.app.post('/api/garmin/configure', async (req, res) => { await this.handleConfigureGarmin(req, res); });
 
         // Upload to Garmin
-        this.app.post('/api/garmin/upload/:sessionId', async (req, res) => {
-            await this.handleUploadToGarmin(req, res);
-        });
+        this.app.post('/api/garmin/upload/:sessionId', async (req, res) => { await this.handleUploadToGarmin(req, res); });
 
         // Check Garmin status
-        this.app.get('/api/garmin/status', (req, res) => {
-            res.json({
-                configured: !!this.garminCredentials,
-                authenticated: this.garminUploader.isLoggedIn()
-            });
-        });
+        this.app.get('/api/garmin/status', (req, res) => { res.json({ configured: !!this.garminCredentials, authenticated: this.garminUploader.isLoggedIn() }); });
 
         // Heart Rate Monitor (HRM) endpoints used by the web UI - delegate to handlers
         this.app.get('/api/hrm/status', (req, res) => { this.handleGetHRMStatus(req, res); });
@@ -388,7 +363,6 @@ export class WebServer {
         }
     }
 
-    // --- New handler methods for HRM and WaterRower (delegated from setupRoutes)
     private handleGetHRMStatus(req: Request, res: Response): void {
         try {
             const connected = this.heartRateMonitor?.isConnected?.() ?? false;
