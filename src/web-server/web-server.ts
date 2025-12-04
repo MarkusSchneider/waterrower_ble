@@ -59,6 +59,53 @@ export class WebServer {
         this.setupMiddleware();
         this.setupRoutes();
         this.setupSocketIO();
+        this.setupDeviceEventListeners();
+    }
+
+    private setupDeviceEventListeners(): void {
+        // Listen to WaterRower lifecycle events
+        this.waterRower.on('initialized', () => {
+            logger('WaterRower initialized');
+            this.emitWaterRowerStatus();
+        });
+
+        this.waterRower.on('close', () => {
+            logger('WaterRower connection closed');
+            this.emitWaterRowerStatus();
+            // If there's an active session, stop it
+            if (this.currentSession && this.currentSession.getState() === SessionState.ACTIVE) {
+                logger('Stopping session due to WaterRower disconnection');
+                this.currentSession.stop();
+                this.emitSessionStatus();
+            }
+        });
+
+        this.waterRower.on('error', (error) => {
+            logger('WaterRower error:', error);
+            this.io.emit('waterrower:error', { error: error.message });
+            this.emitWaterRowerStatus();
+        });
+
+        // Listen to HeartRateMonitor lifecycle events
+        this.heartRateMonitor.on('ready', () => {
+            logger('HeartRateMonitor ready');
+        });
+
+        this.heartRateMonitor.on('connected', () => {
+            logger('HeartRateMonitor connected');
+            this.emitHRMStatus();
+        });
+
+        this.heartRateMonitor.on('disconnected', () => {
+            logger('HeartRateMonitor disconnected');
+            this.emitHRMStatus();
+        });
+
+        this.heartRateMonitor.on('error', (error) => {
+            logger('HeartRateMonitor error:', error);
+            this.io.emit('hrm:error', { error: error.message });
+            this.emitHRMStatus();
+        });
     }
 
     private setupMiddleware(): void {
@@ -442,7 +489,6 @@ export class WebServer {
             this.configManager.setHRMDevice(deviceId, name);
             logger(`HRM device saved to config: ${name}`);
 
-            this.emitHRMStatus();
             res.json({ success: true });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
@@ -452,7 +498,6 @@ export class WebServer {
     private handleDisconnectHRM(req: Request, res: Response): void {
         try {
             this.heartRateMonitor.disconnect();
-            this.emitHRMStatus();
             res.json({ success: true });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to disconnect' });
@@ -473,7 +518,6 @@ export class WebServer {
                 }
             }
 
-            this.emitWaterRowerStatus();
             res.json({ success });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to connect' });

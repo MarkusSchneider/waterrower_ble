@@ -1,6 +1,6 @@
 import debug from 'debug';
 import { EventEmitter } from 'events';
-import { Subject, Observable } from 'rxjs';
+import { Subject } from 'rxjs';
 
 import noble from '@abandonware/noble';
 

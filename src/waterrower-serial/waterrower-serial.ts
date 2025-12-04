@@ -1,6 +1,6 @@
 import { Observable, Subject, Subscription, concatMap, delay, filter, from, lastValueFrom, map, of, tap, zip } from 'rxjs';
 import { SerialPort } from 'serialport';
-import * as events from 'events';
+import { EventEmitter } from 'events';
 import * as path from 'path';
 
 import { appendFileSync, existsSync, fstat, readFileSync, readdirSync, unlinkSync } from 'fs';
@@ -14,7 +14,7 @@ import debug from 'debug';
 
 const logger = debug('WR_SERIAL');
 
-export class WaterRower extends events.EventEmitter {
+export class WaterRower extends EventEmitter {
 
     private recordingSubscription: Subscription | null = null;
     private options: WaterRowerOptions = DEFAULT_WATER_ROWER_OPTIONS;

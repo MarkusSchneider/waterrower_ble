@@ -709,12 +709,10 @@
                 wrStatus.textContent = 'Connected';
                 wrStatus.className = 'state-indicator state-active';
                 btnConnect.classList.add('hidden');
-                if (btnDisconnect) btnDisconnect.classList.remove('hidden');
             } else {
                 wrStatus.textContent = 'Disconnected';
                 wrStatus.className = 'state-indicator state-idle';
                 btnConnect.classList.remove('hidden');
-                if (btnDisconnect) btnDisconnect.classList.add('hidden');
             }
         }
 
