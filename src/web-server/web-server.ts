@@ -4,16 +4,11 @@ import express, {
     Request,
     Response,
 } from 'express';
-import {
-    existsSync,
-    mkdirSync,
-} from 'fs';
 import path from 'path';
 
 import { HeartRateMonitor } from '../ble/heart-rate-monitor';
 import { FitFileGenerator } from '../fit/fit-file-generator';
 import {
-    GarminCredentials,
     GarminUploader,
 } from '../garmin/garmin-uploader';
 import {
@@ -114,7 +109,6 @@ export class WebServer {
         // WaterRower connection endpoints used by the web UI - delegate to handlers
         this.app.get('/api/waterrower/status', (req, res) => { this.handleGetWaterRowerStatus(req, res); });
         this.app.post('/api/waterrower/connect', (req, res) => { this.handleConnectWaterRower(req, res); });
-        this.app.post('/api/waterrower/disconnect', (req, res) => { this.handleDisconnectWaterRower(req, res); });
 
         // Serve the web UI
         this.app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
@@ -367,10 +361,8 @@ export class WebServer {
 
     private handleGetHRMStatus(req: Request, res: Response): void {
         try {
-            const connected = this.heartRateMonitor?.isConnected?.() ?? false;
-            const deviceName = (this.heartRateMonitor && typeof (this.heartRateMonitor as any).getDeviceName === 'function')
-                ? (this.heartRateMonitor as any).getDeviceName()
-                : undefined;
+            const connected = this.heartRateMonitor.isConnected();
+            const deviceName = this.heartRateMonitor.getDeviceName();
             res.json({ connected, deviceName });
         } catch (error: any) {
             res.status(500).json({ error: error.message || 'Failed to get HRM status' });
@@ -419,10 +411,8 @@ export class WebServer {
 
     private handleGetWaterRowerStatus(req: Request, res: Response): void {
         try {
-            const connected = this.waterRower?.isConnected?.() ?? false;
-            const deviceName = (this.waterRower && typeof (this.waterRower as any).getDeviceName === 'function')
-                ? (this.waterRower as any).getDeviceName()
-                : undefined;
+            const connected = this.waterRower.isConnected();
+            const deviceName = "Waterrower";
             res.json({ connected, deviceName });
         } catch (error: any) {
             res.status(500).json({ error: error.message || 'Failed to get WaterRower status' });
@@ -431,52 +421,21 @@ export class WebServer {
 
     private async handleConnectWaterRower(req: Request, res: Response): Promise<void> {
         try {
-            if (this.waterRower && typeof (this.waterRower as any).connectSerial === 'function') {
-                await (this.waterRower as any).connectSerial();
-                const success = this.waterRower.isConnected ? this.waterRower.isConnected() : true;
+            this.waterRower.connectSerial();
+            const success = this.waterRower.isConnected();
 
-                // Save the port to config if connected
-                if (success) {
-                    const port = (this.waterRower as any).getPortName?.();
-                    if (port) {
-                        this.configManager.setWaterRowerPort(port);
-                        logger(`WaterRower port saved to config: ${port}`);
-                    }
+            // Save the port to config if connected
+            if (success) {
+                const port = this.waterRower.getPortName();
+                if (port) {
+                    this.configManager.setWaterRowerPort(port);
+                    logger(`WaterRower port saved to config: ${port}`);
                 }
-
-                res.json({ success });
-            } else if (this.waterRower && typeof (this.waterRower as any).connect === 'function') {
-                await (this.waterRower as any).connect();
-                const success = this.waterRower.isConnected ? this.waterRower.isConnected() : true;
-
-                // Save the port to config if connected
-                if (success) {
-                    const port = (this.waterRower as any).getPortName?.();
-                    if (port) {
-                        this.configManager.setWaterRowerPort(port);
-                        logger(`WaterRower port saved to config: ${port}`);
-                    }
-                }
-
-                res.json({ success });
-            } else {
-                res.status(500).json({ success: false, error: 'WaterRower not available' });
             }
+
+            res.json({ success });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
-        }
-    }
-
-    private handleDisconnectWaterRower(req: Request, res: Response): void {
-        try {
-            if (this.waterRower && typeof (this.waterRower as any).disconnect === 'function') {
-                (this.waterRower as any).disconnect();
-                res.json({ success: true });
-            } else {
-                res.status(500).json({ success: false, error: 'WaterRower not available' });
-            }
-        } catch (error: any) {
-            res.status(500).json({ success: false, error: error.message || 'Failed to disconnect' });
         }
     }
 
