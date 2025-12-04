@@ -1,5 +1,6 @@
 import debug from 'debug';
 import { EventEmitter } from 'events';
+import { Subject, Observable } from 'rxjs';
 
 import noble from '@abandonware/noble';
 
@@ -9,13 +10,19 @@ const logger = debug('HR_MONITOR');
 const HEART_RATE_SERVICE_UUID = '180d';
 const HEART_RATE_MEASUREMENT_UUID = '2a37';
 
+export interface HeartRateData {
+    time: number;
+    heartRate: number;
+}
 
 export class HeartRateMonitor extends EventEmitter {
     private peripheral?: noble.Peripheral;
     private characteristic?: noble.Characteristic;
     private connected = false;
     private scanning = false;
-    private heartRateCallbacks: Array<(heartRate: number) => void> = [];
+
+    // Subject for publishing heart rate data
+    public heartRate$ = new Subject<HeartRateData>();
 
     constructor() {
         super();
@@ -59,7 +66,11 @@ export class HeartRateMonitor extends EventEmitter {
         });
     }
 
-    public async connect(deviceId: string, timeout = 30000): Promise<void> {
+    public async connect(deviceId?: string, timeout = 30000): Promise<void> {
+        if (deviceId == null) {
+            return;
+        }
+
         if (this.connected) {
             logger('Already connected to heart rate monitor');
             return;
@@ -81,7 +92,7 @@ export class HeartRateMonitor extends EventEmitter {
                 const name = peripheral.advertisement.localName;
                 logger(`Discovered device: ${name} - HR Service: ${hasHeartRateService}`);
 
-                // Connect if it has heart rate service and matches name filter (if provided)
+                // Connect if it has heart rate service and matches device ID (if provided) or auto-connect to first device
                 if (hasHeartRateService && id === deviceId) {
                     clearTimeout(timeoutHandle);
                     noble.stopScanning();
@@ -198,18 +209,6 @@ export class HeartRateMonitor extends EventEmitter {
         return this.connected;
     }
 
-    public onHeartRate(callback: (heartRate: number) => void): () => void {
-        this.heartRateCallbacks.push(callback);
-
-        // Return unsubscribe function
-        return () => {
-            const index = this.heartRateCallbacks.indexOf(callback);
-            if (index > -1) {
-                this.heartRateCallbacks.splice(index, 1);
-            }
-        };
-    }
-
     private parseHeartRateData(data: Buffer): void {
         // Parse according to Bluetooth Heart Rate Measurement specification
         // https://www.bluetooth.com/specifications/gatt/characteristics/
@@ -227,10 +226,10 @@ export class HeartRateMonitor extends EventEmitter {
 
         logger(`Heart Rate: ${heartRate} bpm`);
 
-        // Emit to all callbacks
-        this.heartRateCallbacks.forEach(cb => cb(heartRate));
+        // Publish to subject
+        this.heartRate$.next({ time: Date.now(), heartRate });
 
-        // Also emit as event
+        // Also emit as event for backward compatibility
         this.emit('heartrate', heartRate);
     }
 

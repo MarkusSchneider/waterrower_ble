@@ -1,94 +1,92 @@
 import debug from 'debug';
 import { exit } from 'process';
-import { tap } from 'rxjs';
 
-import bleno = require('@abandonware/bleno');
-
-import { FitnessMachineService } from './ble';
 import { HeartRateMonitor } from './ble/heart-rate-monitor';
 import { WaterRower } from './waterrower-serial/waterrower-serial';
 import { WebServer } from './web-server/web-server';
+import { ConfigManager } from './helper/config-manager';
 
 const logger = debug('MAIN');
 logger('Starting WaterRower Training System...');
 
-function startRecording(waterrower: WaterRower): void {
-  logger('start recording');
-  waterrower.connectSerial();
-  waterrower.on('initialized', () => {
-    waterrower.reset();
-    startBLE(waterrower);
-    waterrower.startRecording('recording.txt');
-  });
-}
+// function startRecording(waterrower: WaterRower): void {
+//   logger('start recording');
+//   waterrower.connectSerial();
+//   waterrower.on('initialized', () => {
+//     waterrower.reset();
+//     startBLE(waterrower);
+//     waterrower.startRecording('recording.txt');
+//   });
+// }
 
-function startWorkout(waterrower: WaterRower): void {
-  logger('start workout');
-  waterrower.connectSerial();
-  waterrower.on('initialized', () => {
-    waterrower.reset();
-    startBLE(waterrower);
-  });
-}
+// function startWorkout(waterrower: WaterRower): void {
+//   logger('start workout');
+//   waterrower.connectSerial();
+//   waterrower.on('initialized', () => {
+//     waterrower.reset();
+//     startBLE(waterrower);
+//   });
+// }
 
-function replayRecording(waterrower: WaterRower): void {
-  logger('replay recording');
-  startBLE(waterrower);
+// function replayRecording(waterrower: WaterRower): void {
+//   logger('replay recording');
+//   startBLE(waterrower);
 
-  // waterrower.datapoints$.subscribe({
-  //   next: data => logger(data),
-  //   complete: () => logger('completed'),
-  // });
+//   // waterrower.datapoints$.subscribe({
+//   //   next: data => logger(data),
+//   //   complete: () => logger('completed'),
+//   // });
 
-  waterrower.playRecording('recording.txt').then(() => {
-    logger('replay session finished');
-  });
-}
+//   waterrower.playRecording('recording.txt').then(() => {
+//     logger('replay session finished');
+//   });
+// }
 
-function startBLE(waterrower: WaterRower): void {
-  logger('Start BLE service');
+// function startBLE(waterrower: WaterRower): void {
+//   logger('Start BLE service');
 
-  const ftmsService = new FitnessMachineService();
-  waterrower.datapoints$
-    .pipe(tap(data => {
-      if (data?.name === 'stroke_rate') {
-        ftmsService.updateData(null, Number('0x' + data.value));
-        return;
-      }
-      if (data?.name === 'kcal_watts') {
-        ftmsService.updateData(Number('0x' + data.value), null);
-        return;
-      }
-    }))
-    .subscribe();
+//   const ftmsService = new FitnessMachineService();
+//   waterrower.datapoints$
+//     .pipe(tap(data => {
+//       if (data?.name === 'stroke_rate') {
+//         ftmsService.updateData(null, Number('0x' + data.value));
+//         return;
+//       }
+//       if (data?.name === 'kcal_watts') {
+//         ftmsService.updateData(Number('0x' + data.value), null);
+//         return;
+//       }
+//     }))
+//     .subscribe();
 
-  bleno.on('stateChange', state => {
-    logger(`BLENO stateChange. State = ${state}`);
+//   bleno.on('stateChange', state => {
+//     logger(`BLENO stateChange. State = ${state}`);
 
-    if (state === 'poweredOn') {
-      bleno.startAdvertising('WaterRower', [ftmsService.uuid]);
-      return;
-    }
+//     if (state === 'poweredOn') {
+//       bleno.startAdvertising('WaterRower', [ftmsService.uuid]);
+//       return;
+//     }
 
-    bleno.stopAdvertising();
-  });
+//     bleno.stopAdvertising();
+//   });
 
-  bleno.on('advertisingStart', error => {
-    logger(`BLENO advertisingStart. Error = ${error}`);
-    if (error != null) {
-      return;
-    }
+//   bleno.on('advertisingStart', error => {
+//     logger(`BLENO advertisingStart. Error = ${error}`);
+//     if (error != null) {
+//       return;
+//     }
 
-    bleno.setServices([ftmsService], error => {
-      logger(`BLENO set ftmsService: ${error ?? 'success'} `)
-    });
-  })
-}
+//     bleno.setServices([ftmsService], error => {
+//       logger(`BLENO set ftmsService: ${error ?? 'success'} `)
+//     });
+//   })
+// }
 
-function createWaterRower(): WaterRower {
+function createWaterRower(port?: string): WaterRower {
   return new WaterRower(options => {
     options.datapoints = ['stroke_rate', 'kcal_watts', 'strokes_cnt', 'm_s_total', 'total_kcal', 'ms_average'];
-    options.portName = process.env.WATERROWER_PORT || '';
+    // Use saved port from config, or empty string to auto-discover
+    options.portName = port || '';
     options.refreshRate = 1000;
   });
 }
@@ -98,51 +96,53 @@ function main(): void {
   const mode = process.argv[2];
   startWebServer();
 
-  if (mode === '-w') {
-    startWorkout(createWaterRower());
-    return;
-  }
+  // if (mode === '-w') {
+  //   startWorkout(createWaterRower());
+  //   return;
+  // }
 
-  if (mode === '-r') {
-    startRecording(createWaterRower());
-    return;
-  }
+  // if (mode === '-r') {
+  //   startRecording(createWaterRower());
+  //   return;
+  // }
 
-  if (mode === '-p') {
-    replayRecording(createWaterRower());
-    return;
-  }
+  // if (mode === '-p') {
+  //   replayRecording(createWaterRower());
+  //   return;
+  // }
 
-  if (mode === '-ble') {
-    startBLE(createWaterRower());
-    return;
-  }
+  // if (mode === '-ble') {
+  //   startBLE(createWaterRower());
+  //   return;
+  // }
 }
 
-function startWebServer(): void {
+async function startWebServer(): Promise<void> {
   logger('Starting web server mode...');
+
+  // Initialize configuration manager
+  const configManager = new ConfigManager('./data');
+  const savedHRMDevice = configManager.getHRMDevice();
 
   // Initialize heart rate monitor (optional)
   const heartRateMonitor = new HeartRateMonitor();
-  const waterRower = createWaterRower();
+  await heartRateMonitor.connect(savedHRMDevice?.id, 10000);
+
+  // Initialize WaterRower
+  const waterRower = createWaterRower(configManager.getWaterRowerPort());
   waterRower.connectSerial();
 
-  // Optional: Load Garmin credentials from environment variables
-  const garminCredentials = process.env.GARMIN_EMAIL && process.env.GARMIN_PASSWORD
-    ? { email: process.env.GARMIN_EMAIL, password: process.env.GARMIN_PASSWORD }
-    : { email: '', password: '' };
-
-  if (garminCredentials) {
-    logger('Garmin credentials loaded from environment');
-  }
+  // Load Garmin credentials from config
+  const garminCredentials = configManager.getGarminCredentials();
 
   // Create and start web server
   const webServer = new WebServer({
     port: parseInt(process.env.PORT || '3000'),
     waterRower: waterRower,
     heartRateMonitor,
-    garminCredentials,
-    fitFilesDirectory: './data/fit-files'
+    garminCredentials: garminCredentials || { email: '', password: '' },
+    fitFilesDirectory: './data/fit-files',
+    configManager
   });
 
   webServer.start();
@@ -154,5 +154,3 @@ try {
   console.error(error);
   exit(1);
 }
-
-

@@ -322,33 +322,66 @@
             </div>
         </div>
 
+        <!-- Connection Requirements Card -->
+        <div class="card" style="background: #ecf0ff; border-left: 4px solid #667eea;">
+            <h2>✓ Connection Requirements</h2>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div>
+                    <strong style="color: #ef4444;">Required:</strong>
+                    <div id="wrRequiredStatus" style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                        <span id="wrRequired" style="font-size: 1.5em;">⚪</span>
+                        <span>WaterRower Connected</span>
+                    </div>
+                </div>
+                <div>
+                    <strong style="color: #f59e0b;">Optional:</strong>
+                    <div id="hrmOptionalStatus" style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                        <span id="hrmOptional" style="font-size: 1.5em;">⚪</span>
+                        <span>Heart Rate Monitor Connected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- HRM & WaterRower Status Cards Side-by-Side -->
         <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
-            <!-- Heart Rate Monitor Card -->
-            <div class="card" id="hrmCard" style="flex: 1 1 350px;">
-                <h2>❤️ Heart Rate Monitor</h2>
-                <div style="margin-bottom: 10px;">
-                    Status: <span id="hrmStatus" class="state-indicator state-idle">Disconnected</span>
-                </div>
-                <div class="controls" style="margin-bottom: 10px;">
-                    <button id="btnDiscoverHRM" class="btn-secondary" onclick="discoverHRM()">Discover Devices</button>
-                    <select id="hrmDeviceSelect" style="min-width:200px;display:none;"
-                        onchange="selectHRMDevice()"></select>
-                    <button id="btnConnectHRM" class="btn-start hidden" onclick="connectHRM()">Connect</button>
-                </div>
-                <div id="hrmAlert" class="hidden"></div>
-            </div>
-
-            <!-- WaterRower Connection Card -->
+            <!-- WaterRower Connection Card (Priority) -->
             <div class="card" id="wrCard" style="flex: 1 1 350px;">
-                <h2>🚣 WaterRower Connection</h2>
+                <h2>🚣 WaterRower Connection (REQUIRED)</h2>
                 <div style="margin-bottom: 10px;">
                     Status: <span id="wrStatus" class="state-indicator state-idle">Disconnected</span>
                 </div>
                 <div class="controls" style="margin-bottom: 10px;">
                     <button id="btnConnectWR" class="btn-start" onclick="connectWR()">Connect</button>
+                    <button id="btnDisconnectWR" class="btn-secondary hidden"
+                        onclick="disconnectWR()">Disconnect</button>
                 </div>
                 <div id="wrAlert" class="hidden"></div>
+                <p style="font-size: 0.85em; color: #666; margin-top: 10px;">
+                    <strong>Note:</strong> You must have a WaterRower connected before starting a training session.
+                </p>
+            </div>
+
+            <!-- Heart Rate Monitor Card -->
+            <div class="card" id="hrmCard" style="flex: 1 1 350px;">
+                <h2>❤️ Heart Rate Monitor (OPTIONAL)</h2>
+                <div style="margin-bottom: 10px;">
+                    Status: <span id="hrmStatus" class="state-indicator state-idle">Disconnected</span>
+                </div>
+                <div class="controls" style="margin-bottom: 10px;">
+                    <button id="btnDiscoverHRM" class="btn-secondary" onclick="discoverHRM()">Discover Devices</button>
+                    <select id="hrmDeviceSelect"
+                        style="min-width:200px;display:none;padding:8px;border:2px solid #e5e7eb;border-radius:6px;"
+                        onchange="selectHRMDevice()"></select>
+                    <button id="btnConnectHRM" class="btn-start hidden" onclick="connectHRM()">Connect</button>
+                    <button id="btnDisconnectHRM" class="btn-secondary hidden"
+                        onclick="disconnectHRM()">Disconnect</button>
+                </div>
+                <div id="hrmAlert" class="hidden"></div>
+                <p style="font-size: 0.85em; color: #666; margin-top: 10px;">
+                    <strong>Note:</strong> Heart rate monitoring is optional. Training sessions can start without a
+                    connected HRM device.
+                </p>
             </div>
         </div>
 
@@ -391,6 +424,10 @@
             updateHRMStatus();
             updateWRStatus();
         });
+
+        let selectedHRM = null;
+        let hrmDevices = [];
+        let waterRowerConnected = false;
 
         function startStatusPolling() {
             const interval = 60000; // 60 seconds
@@ -467,8 +504,9 @@
                 const response = await fetch(`${API_BASE}/session/start`, { method: 'POST' });
                 const data = await response.json();
 
-                if (data.success) {
+                if (response.ok && data.success) {
                     showAlert('success', 'Training session started!');
+                    updateStatus();
                 } else {
                     showAlert('error', data.error || 'Failed to start session');
                 }
@@ -651,12 +689,16 @@
                 const response = await fetch(`${API_BASE}/hrm/status`);
                 const data = await response.json();
                 const hrmStatus = document.getElementById('hrmStatus');
+                const hrmOptional = document.getElementById('hrmOptional');
+
                 if (data.connected) {
                     hrmStatus.textContent = `Connected (${data.deviceName || 'HRM'})`;
                     hrmStatus.className = 'state-indicator state-active';
+                    hrmOptional.textContent = '✅';
                 } else {
                     hrmStatus.textContent = 'Disconnected';
                     hrmStatus.className = 'state-indicator state-idle';
+                    hrmOptional.textContent = '⚪';
                 }
             } catch (error) {
                 document.getElementById('hrmStatus').textContent = 'Error';
@@ -704,10 +746,14 @@
                 return;
             }
             try {
+                const selectedDevice = hrmDevices.find(d => d.id === selectedHRM);
                 const response = await fetch(`${API_BASE}/hrm/connect`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ deviceId: selectedHRM })
+                    body: JSON.stringify({
+                        deviceId: selectedHRM,
+                        deviceName: selectedDevice?.name || 'Unknown Device'
+                    })
                 });
                 const data = await response.json();
                 if (data.success) {
@@ -718,6 +764,21 @@
                 }
             } catch (error) {
                 showHRMAlert('error', 'Connection error: ' + error.message);
+            }
+        }
+
+        async function disconnectHRM() {
+            try {
+                const response = await fetch(`${API_BASE}/hrm/disconnect`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showHRMAlert('success', 'Disconnected from HRM');
+                    updateHRMStatus();
+                } else {
+                    showHRMAlert('error', data.error || 'Failed to disconnect');
+                }
+            } catch (error) {
+                showHRMAlert('error', 'Error: ' + error.message);
             }
         }
 
@@ -735,16 +796,23 @@
                 const data = await response.json();
                 const wrStatus = document.getElementById('wrStatus');
                 const btnConnect = document.getElementById('btnConnectWR');
+                const btnDisconnect = document.getElementById('btnDisconnectWR');
+                const wrRequired = document.getElementById('wrRequired');
+
+                waterRowerConnected = data.connected;
+
                 if (data.connected) {
                     wrStatus.textContent = 'Connected';
                     wrStatus.className = 'state-indicator state-active';
                     btnConnect.classList.add('hidden');
                     btnDisconnect.classList.remove('hidden');
+                    wrRequired.textContent = '✅';
                 } else {
                     wrStatus.textContent = 'Disconnected';
                     wrStatus.className = 'state-indicator state-idle';
                     btnConnect.classList.remove('hidden');
                     btnDisconnect.classList.add('hidden');
+                    wrRequired.textContent = '❌';
                 }
             } catch (error) {
                 document.getElementById('wrStatus').textContent = 'Error';
@@ -770,6 +838,21 @@
                 showWRAlert('error', 'Connection error: ' + error.message);
                 document.getElementById('btnConnectWR').disabled = false;
                 document.getElementById('btnConnectWR').textContent = 'Connect';
+            }
+        }
+
+        async function disconnectWR() {
+            try {
+                const response = await fetch(`${API_BASE}/waterrower/disconnect`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showWRAlert('success', 'Disconnected from WaterRower');
+                    updateWRStatus();
+                } else {
+                    showWRAlert('error', data.error || 'Failed to disconnect');
+                }
+            } catch (error) {
+                showWRAlert('error', 'Error: ' + error.message);
             }
         }
 

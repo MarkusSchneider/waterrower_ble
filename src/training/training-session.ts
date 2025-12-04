@@ -53,11 +53,11 @@ export class TrainingSession extends EventEmitter {
 
     private dataPoints: TrainingDataPoint[] = [];
     private waterRowerSubscription?: Subscription;
-    private heartRateSubscription?: (() => void);
+    private heartRateSubscription?: Subscription;
 
     private currentData: Partial<TrainingDataPoint> = {}; constructor(
         private waterRower: WaterRower,
-        private heartRateMonitor?: HeartRateMonitor
+        private heartRateMonitor: HeartRateMonitor
     ) {
         super();
         this.sessionId = `session_${Date.now()}`;
@@ -76,21 +76,19 @@ export class TrainingSession extends EventEmitter {
             throw new Error(`Cannot start session in ${this.state} state`);
         }
 
+        // Check if WaterRower is connected (required)
+        if (!this.waterRower.isConnected()) {
+            throw new Error('WaterRower is not connected. Please connect the WaterRower before starting a training session.');
+        }
+
         logger('Starting training session');
         this.state = SessionState.ACTIVE;
         this.startTime = new Date();
         this.dataPoints = [];
         this.currentData = {};
 
-        // Connect and reset WaterRower
-        this.waterRower.connectSerial();
-
-        await new Promise<void>((resolve) => {
-            this.waterRower.once('initialized', () => {
-                this.waterRower.reset();
-                resolve();
-            });
-        });
+        // Reset WaterRower
+        this.waterRower.reset();
 
         // Subscribe to WaterRower data
         this.waterRowerSubscription = this.waterRower.datapoints$.subscribe({
@@ -104,20 +102,23 @@ export class TrainingSession extends EventEmitter {
             }
         });
 
-        // Subscribe to heart rate if monitor is available
-        if (this.heartRateMonitor) {
-            try {
-                await this.heartRateMonitor.connect();
-                this.heartRateSubscription = this.heartRateMonitor.onHeartRate((hr: number) => {
+        // Subscribe to heart rate if monitor is available and connected
+        if (this.heartRateMonitor.isConnected()) {
+            this.heartRateSubscription = this.heartRateMonitor.heartRate$.subscribe({
+                next: (data) => {
                     if (this.state === SessionState.ACTIVE) {
-                        this.currentData.heartRate = hr;
+                        this.currentData.heartRate = data.heartRate;
                     }
-                });
-            } catch (err) {
-                logger('Heart rate monitor not available:', err);
-                // Continue without HR monitor
-            }
-        }        // Start periodic data collection (every second)
+                },
+                error: (err) => {
+                    logger('Heart rate monitor error:', err);
+                }
+            });
+        } else if (this.heartRateMonitor) {
+            logger('Heart rate monitor configured but not connected. Continuing without HRM data.');
+        }
+
+        // Start periodic data collection (every second)
         this.scheduleDataCollection();
 
         this.emit('started', { sessionId: this.sessionId, startTime: this.startTime });
@@ -159,9 +160,7 @@ export class TrainingSession extends EventEmitter {
 
         // Cleanup subscriptions
         this.waterRowerSubscription?.unsubscribe();
-        if (this.heartRateSubscription) {
-            this.heartRateSubscription();
-        }
+        this.heartRateSubscription?.unsubscribe();
         this.heartRateMonitor?.disconnect(); this.emit('stopped', this.getSummary());
 
         return this.dataPoints;

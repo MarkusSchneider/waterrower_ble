@@ -59,6 +59,10 @@ export class WaterRower extends events.EventEmitter {
         return this.serialPort != null && this.serialPort.isOpen;
     }
 
+    public getPortName(): string | undefined {
+        return this.options.portName;
+    }
+
     private discoverPort(callback: (name?: string) => void): void {
         SerialPort.list().then((ports) => {
             const p = ports.find(

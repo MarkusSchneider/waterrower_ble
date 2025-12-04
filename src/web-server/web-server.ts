@@ -21,6 +21,7 @@ import {
     TrainingSession,
 } from '../training/training-session';
 import { WaterRower } from '../waterrower-serial/waterrower-serial';
+import { ConfigManager } from '../helper/config-manager';
 
 const logger = debug('WEB_SERVER');
 
@@ -30,6 +31,7 @@ export interface WebServerOptions {
     heartRateMonitor: HeartRateMonitor;
     garminCredentials: GarminCredentials;
     fitFilesDirectory: string;
+    configManager: ConfigManager;
 }
 
 export class WebServer {
@@ -42,6 +44,7 @@ export class WebServer {
     private garminCredentials?: GarminCredentials;
     private fitFilesDirectory: string;
     private sessionHistory: any[] = [];
+    private configManager: ConfigManager;
 
     constructor(private options: WebServerOptions) {
         this.app = express();
@@ -49,6 +52,7 @@ export class WebServer {
         this.heartRateMonitor = options.heartRateMonitor;
         this.garminCredentials = options.garminCredentials;
         this.fitFilesDirectory = options.fitFilesDirectory;
+        this.configManager = options.configManager;
         this.currentSession = null;
         this.fitGenerator = new FitFileGenerator();
         this.garminUploader = new GarminUploader();
@@ -143,6 +147,14 @@ export class WebServer {
 
     private async handleStartSession(req: Request, res: Response): Promise<void> {
         try {
+            // Check if WaterRower is connected (required)
+            if (!this.waterRower.isConnected()) {
+                res.status(400).json({
+                    error: 'WaterRower is not connected. Please connect the WaterRower before starting a training session.'
+                });
+                return;
+            }
+
             if (this.currentSession && this.currentSession.getState() !== SessionState.FINISHED) {
                 res.status(400).json({
                     error: 'A session is already active. Please stop it first.'
@@ -311,6 +323,9 @@ export class WebServer {
 
             this.garminCredentials = { email, password };
 
+            // Save to config
+            this.configManager.setGarminCredentials(email, password);
+
             // Test login
             await this.garminUploader.login(this.garminCredentials);
 
@@ -387,13 +402,19 @@ export class WebServer {
 
     private async handleConnectHRM(req: Request, res: Response): Promise<void> {
         try {
-            const { deviceId } = req.body || {};
+            const { deviceId, deviceName } = req.body || {};
             if (!deviceId) {
                 res.status(400).json({ success: false, error: 'deviceId required' });
                 return;
             }
 
             await this.heartRateMonitor.connect(deviceId);
+
+            // Save device selection to config
+            const name = deviceName || 'Unknown Device';
+            this.configManager.setHRMDevice(deviceId, name);
+            logger(`HRM device saved to config: ${name}`);
+
             res.json({ success: true });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
@@ -425,10 +446,32 @@ export class WebServer {
         try {
             if (this.waterRower && typeof (this.waterRower as any).connectSerial === 'function') {
                 await (this.waterRower as any).connectSerial();
-                res.json({ success: this.waterRower.isConnected ? this.waterRower.isConnected() : true });
+                const success = this.waterRower.isConnected ? this.waterRower.isConnected() : true;
+                
+                // Save the port to config if connected
+                if (success) {
+                    const port = (this.waterRower as any).getPortName?.();
+                    if (port) {
+                        this.configManager.setWaterRowerPort(port);
+                        logger(`WaterRower port saved to config: ${port}`);
+                    }
+                }
+                
+                res.json({ success });
             } else if (this.waterRower && typeof (this.waterRower as any).connect === 'function') {
                 await (this.waterRower as any).connect();
-                res.json({ success: this.waterRower.isConnected ? this.waterRower.isConnected() : true });
+                const success = this.waterRower.isConnected ? this.waterRower.isConnected() : true;
+                
+                // Save the port to config if connected
+                if (success) {
+                    const port = (this.waterRower as any).getPortName?.();
+                    if (port) {
+                        this.configManager.setWaterRowerPort(port);
+                        logger(`WaterRower port saved to config: ${port}`);
+                    }
+                }
+                
+                res.json({ success });
             } else {
                 res.status(500).json({ success: false, error: 'WaterRower not available' });
             }
