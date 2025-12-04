@@ -486,8 +486,7 @@ export class WebServer {
             logger(`Web server running on http://localhost:${port}`);
             console.log(`\n🚣 WaterRower Training Server`);
             console.log(`📡 Web interface: http://localhost:${port}`);
-            console.log(`🔌 API endpoint: http://localhost:${port}/api`);
-            console.log(`\n`);
+            console.log(`🔌 API endpoint: http://localhost:${port}/api\n`);
         });
     }
 }

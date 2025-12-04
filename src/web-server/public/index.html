@@ -322,32 +322,11 @@
             </div>
         </div>
 
-        <!-- Connection Requirements Card -->
-        <div class="card" style="background: #ecf0ff; border-left: 4px solid #667eea;">
-            <h2>✓ Connection Requirements</h2>
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <div>
-                    <strong style="color: #ef4444;">Required:</strong>
-                    <div id="wrRequiredStatus" style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                        <span id="wrRequired" style="font-size: 1.5em;">⚪</span>
-                        <span>WaterRower Connected</span>
-                    </div>
-                </div>
-                <div>
-                    <strong style="color: #f59e0b;">Optional:</strong>
-                    <div id="hrmOptionalStatus" style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                        <span id="hrmOptional" style="font-size: 1.5em;">⚪</span>
-                        <span>Heart Rate Monitor Connected</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- HRM & WaterRower Status Cards Side-by-Side -->
         <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
             <!-- WaterRower Connection Card (Priority) -->
             <div class="card" id="wrCard" style="flex: 1 1 350px;">
-                <h2>🚣 WaterRower Connection (REQUIRED)</h2>
+                <h2>🚣 WaterRower Connection</h2>
                 <div style="margin-bottom: 10px;">
                     Status: <span id="wrStatus" class="state-indicator state-idle">Disconnected</span>
                 </div>
@@ -357,14 +336,11 @@
                         onclick="disconnectWR()">Disconnect</button>
                 </div>
                 <div id="wrAlert" class="hidden"></div>
-                <p style="font-size: 0.85em; color: #666; margin-top: 10px;">
-                    <strong>Note:</strong> You must have a WaterRower connected before starting a training session.
-                </p>
             </div>
 
             <!-- Heart Rate Monitor Card -->
             <div class="card" id="hrmCard" style="flex: 1 1 350px;">
-                <h2>❤️ Heart Rate Monitor (OPTIONAL)</h2>
+                <h2>❤️ Heart Rate Monitor</h2>
                 <div style="margin-bottom: 10px;">
                     Status: <span id="hrmStatus" class="state-indicator state-idle">Disconnected</span>
                 </div>
@@ -378,10 +354,6 @@
                         onclick="disconnectHRM()">Disconnect</button>
                 </div>
                 <div id="hrmAlert" class="hidden"></div>
-                <p style="font-size: 0.85em; color: #666; margin-top: 10px;">
-                    <strong>Note:</strong> Heart rate monitoring is optional. Training sessions can start without a
-                    connected HRM device.
-                </p>
             </div>
         </div>
 
