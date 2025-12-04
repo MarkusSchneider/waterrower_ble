@@ -127,80 +127,54 @@ export class HeartRateMonitor extends EventEmitter {
 
         logger(`Connecting to ${peripheral.advertisement.localName}...`);
 
-        return new Promise((resolve, reject) => {
-            peripheral.connect((error) => {
-                if (error) {
-                    logger('Connection error:', error);
-                    reject(error);
-                    return;
-                }
-
-                logger('Connected! Discovering services...');
-
-                peripheral.discoverServices([HEART_RATE_SERVICE_UUID], (error, services) => {
-                    if (error) {
-                        logger('Service discovery error:', error);
-                        reject(error);
-                        return;
-                    }
-
-                    const hrService = services[0];
-                    if (!hrService) {
-                        reject(new Error('Heart rate service not found'));
-                        return;
-                    }
-
-                    logger('Discovering characteristics...');
-
-                    hrService.discoverCharacteristics([HEART_RATE_MEASUREMENT_UUID], (error, characteristics) => {
-                        if (error) {
-                            logger('Characteristic discovery error:', error);
-                            reject(error);
-                            return;
-                        }
-
-                        this.characteristic = characteristics[0];
-                        if (!this.characteristic) {
-                            reject(new Error('Heart rate measurement characteristic not found'));
-                            return;
-                        }
-
-                        logger('Subscribing to heart rate notifications...');
-
-                        this.characteristic.subscribe((error) => {
-                            if (error) {
-                                logger('Subscription error:', error);
-                                reject(error);
-                                return;
-                            }
-
-                            this.characteristic!.on('data', (data) => {
-                                this.parseHeartRateData(data);
-                            });
-
-                            this.connected = true;
-                            logger('Successfully subscribed to heart rate data');
-                            this.emit('connected');
-                            resolve();
-                        });
-                    });
-                });
-            });
-
-            peripheral.once('disconnect', () => {
-                logger('Heart rate monitor disconnected');
-                this.connected = false;
-                this.peripheral = undefined;
-                this.characteristic = undefined;
-                this.emit('disconnected');
-            });
+        // Setup disconnect handler
+        peripheral.once('disconnect', () => {
+            logger('Heart rate monitor disconnected');
+            this.connected = false;
+            this.peripheral = undefined;
+            this.characteristic = undefined;
+            this.emit('disconnected');
         });
+
+        // Connect to peripheral
+        await peripheral.connectAsync();
+        logger('Connected! Discovering services...');
+
+        // Discover services
+        const services = await peripheral.discoverServicesAsync([HEART_RATE_SERVICE_UUID]);
+        const hrService = services[0];
+        if (!hrService) {
+            throw new Error('Heart rate service not found');
+        }
+
+        logger('Discovering characteristics...');
+
+        // Discover characteristics
+        const characteristics = await hrService.discoverCharacteristicsAsync([HEART_RATE_MEASUREMENT_UUID]);
+        this.characteristic = characteristics[0];
+        if (!this.characteristic) {
+            throw new Error('Heart rate measurement characteristic not found');
+        }
+
+        logger('Subscribing to heart rate notifications...');
+
+        // Subscribe to notifications
+        await this.characteristic.subscribeAsync();
+
+        // Setup data handler
+        this.characteristic.on('data', (data) => {
+            this.parseHeartRateData(data);
+        });
+
+        this.connected = true;
+        logger('Successfully subscribed to heart rate data');
+        this.emit('connected');
     }
 
-    public disconnect(): void {
+    public async disconnect(): Promise<void> {
         if (this.peripheral && this.connected) {
             logger('Disconnecting from heart rate monitor...');
-            this.peripheral.disconnect();
+            await this.peripheral.disconnectAsync();
             this.connected = false;
         }
     }
