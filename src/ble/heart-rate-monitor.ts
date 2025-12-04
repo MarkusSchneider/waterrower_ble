@@ -207,7 +207,7 @@ export class HeartRateMonitor extends EventEmitter {
         this.emit('heartrate', heartRate);
     }
 
-    public getDeviceName(): string | undefined {
-        return this.peripheral?.advertisement.localName;
+    public getDeviceName(): string {
+        return this.peripheral?.advertisement.localName ?? 'Unknown Device';
     }
 }

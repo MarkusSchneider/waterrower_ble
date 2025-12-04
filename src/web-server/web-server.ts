@@ -365,10 +365,8 @@ export class WebServer {
 
     private handleGetHRMStatus(req: Request, res: Response): void {
         try {
-            const connected = this.heartRateMonitor?.isConnected?.() ?? false;
-            const deviceName = (this.heartRateMonitor && typeof (this.heartRateMonitor as any).getDeviceName === 'function')
-                ? (this.heartRateMonitor as any).getDeviceName()
-                : undefined;
+            const connected = this.heartRateMonitor.isConnected();
+            const deviceName = this.heartRateMonitor.getDeviceName();
             res.json({ connected, deviceName });
         } catch (error: any) {
             res.status(500).json({ error: error.message || 'Failed to get HRM status' });
@@ -377,12 +375,8 @@ export class WebServer {
 
     private async handleDiscoverHRM(req: Request, res: Response): Promise<void> {
         try {
-            if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).discoverDevices === 'function') {
-                const devices = await (this.heartRateMonitor as any).discoverDevices();
-                res.json({ devices });
-            } else {
-                res.json({ devices: [] });
-            }
+            const devices = await this.heartRateMonitor.discoverDevices();
+            res.json({ devices });
         } catch (error: any) {
             res.status(500).json({ error: error.message || 'Discovery failed' });
         }

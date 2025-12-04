@@ -6,7 +6,7 @@
   "scripts": {
     "clean": "rimraf ./dist",
     "build": "npm run clean && tsc -b",
-    "serve:node": "npm run build && node dist/main.js",
+    "serve:node": "npm run build && DEBUG=* node dist/main.js",
     "serve": "ts-node src/main.ts",
     "watch": "nodemon src -e ts --exec 'npm run serve'",
     "test": "jasmine --reporter=jasmine-console-reporter --config=jasmine.json",
