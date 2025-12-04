@@ -224,7 +224,7 @@ export class HeartRateMonitor extends EventEmitter {
             heartRate = data.readUInt8(1);
         }
 
-        logger(`Heart Rate: ${heartRate} bpm`);
+        // logger(`Heart Rate: ${heartRate} bpm`);
 
         // Publish to subject
         this.heartRate$.next({ time: Date.now(), heartRate });

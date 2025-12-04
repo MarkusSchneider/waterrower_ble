@@ -122,15 +122,12 @@ async function startWebServer(): Promise<void> {
 
   // Initialize configuration manager
   const configManager = new ConfigManager('./data');
-  const savedHRMDevice = configManager.getHRMDevice();
 
   // Initialize heart rate monitor (optional)
   const heartRateMonitor = new HeartRateMonitor();
-  await heartRateMonitor.connect(savedHRMDevice?.id, 10000);
 
   // Initialize WaterRower
   const waterRower = createWaterRower(configManager.getWaterRowerPort());
-  waterRower.connectSerial();
 
   // Create and start web server using config values
   const webServer = new WebServer({
@@ -140,6 +137,10 @@ async function startWebServer(): Promise<void> {
   });
 
   webServer.start();
+
+  const savedHRMDevice = configManager.getHRMDevice();
+  waterRower.connectSerial();
+  await heartRateMonitor.connect(savedHRMDevice?.id, 10000);
 }
 
 try {
