@@ -16,7 +16,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 15px;
             color: #333;
         }
 
@@ -28,76 +28,109 @@
         header {
             text-align: center;
             color: white;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-content {
+            flex: 1;
+            text-align: center;
         }
 
         h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .config-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.5em;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            flex: 0;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .config-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
         }
 
         .card {
             background: white;
             border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .card h2 {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             color: #667eea;
+            font-size: 1.3em;
         }
 
         .status-display {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
         }
 
         .metric {
             background: #f8f9fa;
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
             text-align: center;
         }
 
         .metric-label {
-            font-size: 0.9em;
+            font-size: 0.8em;
             color: #666;
             margin-bottom: 5px;
         }
 
         .metric-value {
-            font-size: 2em;
+            font-size: 1.6em;
             font-weight: bold;
             color: #667eea;
         }
 
         .metric-unit {
-            font-size: 0.8em;
+            font-size: 0.75em;
             color: #999;
         }
 
         .controls {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         button {
-            padding: 12px 24px;
+            padding: 10px 18px;
             border: none;
             border-radius: 6px;
-            font-size: 1em;
+            font-size: 0.95em;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            flex: 1;
+            min-width: 100px;
         }
 
-        button:hover {
+        button:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
@@ -134,6 +167,36 @@
             border-radius: 20px;
             font-weight: 600;
             font-size: 0.9em;
+        }
+
+        .status-line {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .device-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .device-status-icon {
+            font-size: 1.1em;
+        }
+
+        .state-connected {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .state-disconnected {
+            background: #f3f4f6;
+            color: #6b7280;
         }
 
         .state-idle {
@@ -253,21 +316,233 @@
         .recording {
             animation: pulse 2s ease-in-out infinite;
         }
+
+        /* Configuration Menu Styles */
+        .config-menu {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            max-width: 500px;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 10px rgba(0, 0, 0, 0.3);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .config-menu.open {
+            right: 0;
+        }
+
+        .config-menu-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .config-menu-header h2 {
+            color: white;
+            margin: 0;
+        }
+
+        .close-config {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            flex: 0;
+            font-size: 1.5em;
+            padding: 5px 12px;
+            transition: all 0.3s;
+        }
+
+        .close-config:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .config-menu-content {
+            padding: 20px;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 999;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            header p {
+                font-size: 0.85em;
+            }
+
+            .status-display {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .metric-value {
+                font-size: 1.4em;
+            }
+
+            .card {
+                padding: 15px;
+            }
+
+            .card h2 {
+                font-size: 1.1em;
+            }
+
+            button {
+                padding: 10px 14px;
+                font-size: 0.9em;
+                min-width: 80px;
+            }
+
+            .config-menu {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.3em;
+            }
+
+            .metric-label {
+                font-size: 0.75em;
+            }
+
+            .metric-value {
+                font-size: 1.2em;
+            }
+
+            button {
+                padding: 8px 12px;
+                font-size: 0.85em;
+            }
+
+            .controls {
+                gap: 6px;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <!-- Configuration Menu Overlay -->
+    <div class="overlay" id="configOverlay" onclick="toggleConfigMenu()"></div>
+
+    <!-- Configuration Menu -->
+    <div class="config-menu" id="configMenu">
+        <div class="config-menu-header">
+            <h2>⚙️ Configuration</h2>
+            <button class="close-config" onclick="toggleConfigMenu()">×</button>
+        </div>
+        <div class="config-menu-content">
+            <!-- WaterRower Connection Card -->
+            <div class="card" id="wrCard">
+                <h2>🚣 WaterRower Connection</h2>
+                <div style="margin-bottom: 10px;">
+                    Status: <span id="wrStatus" class="state-indicator state-idle">Disconnected</span>
+                </div>
+                <div class="controls" style="margin-bottom: 10px;">
+                    <button id="btnConnectWR" class="btn-start" onclick="connectWR()">Connect</button>
+                    <button id="btnDisconnectWR" class="btn-secondary hidden"
+                        onclick="disconnectWR()">Disconnect</button>
+                </div>
+                <div id="wrAlert" class="hidden"></div>
+            </div>
+
+            <!-- Heart Rate Monitor Card -->
+            <div class="card" id="hrmCard">
+                <h2>❤️ Heart Rate Monitor</h2>
+                <div style="margin-bottom: 10px;">
+                    Status: <span id="hrmStatus" class="state-indicator state-idle">Disconnected</span>
+                </div>
+                <div class="controls" style="margin-bottom: 10px;">
+                    <button id="btnDiscoverHRM" class="btn-secondary" onclick="discoverHRM()">Discover</button>
+                    <select id="hrmDeviceSelect"
+                        style="min-width:150px;display:none;padding:8px;border:2px solid #e5e7eb;border-radius:6px;flex:1;"
+                        onchange="selectHRMDevice()"></select>
+                    <button id="btnConnectHRM" class="btn-start hidden" onclick="connectHRM()">Connect</button>
+                    <button id="btnDisconnectHRM" class="btn-secondary hidden"
+                        onclick="disconnectHRM()">Disconnect</button>
+                </div>
+                <div id="hrmAlert" class="hidden"></div>
+            </div>
+
+            <!-- Garmin Configuration -->
+            <div class="card garmin-config">
+                <h2>⚙️ Garmin Connect</h2>
+                <div id="garminAlert" class="hidden"></div>
+                <div class="input-group">
+                    <label for="garminEmail">Email:</label>
+                    <input type="email" id="garminEmail" placeholder="your@email.com">
+                </div>
+                <div class="input-group">
+                    <label for="garminPassword">Password:</label>
+                    <input type="password" id="garminPassword" placeholder="Your Garmin password">
+                </div>
+                <button class="btn-secondary" onclick="configureGarmin()" style="width: 100%;">Save & Test
+                    Connection</button>
+                <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                    Status: <span id="garminStatus">Not configured</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
-            <h1>🚣 WaterRower Training</h1>
-            <p>Track your rowing sessions with heart rate monitoring and Garmin Connect integration</p>
+            <button class="config-toggle" onclick="toggleConfigMenu()">☰</button>
+            <div class="header-content">
+                <h1>🚣 WaterRower Training</h1>
+                <p>Track your rowing sessions with HR & Garmin Connect</p>
+            </div>
+            <div style="width: 45px;"></div>
         </header>
 
         <!-- Status Card -->
         <div class="card">
             <h2>Current Session</h2>
-            <div style="margin-bottom: 15px;">
-                Status: <span id="sessionState" class="state-indicator state-idle">IDLE</span>
+            <div class="status-line">
+                <div>
+                    Status: <span id="sessionState" class="state-indicator state-idle">IDLE</span>
+                </div>
+                <div class="device-status" id="wrStatusMain">
+                    <span class="device-status-icon">🚣</span>
+                    <span id="wrStatusText" class="state-indicator state-disconnected">Disconnected</span>
+                </div>
+                <div class="device-status" id="hrmStatusMain">
+                    <span class="device-status-icon">❤️</span>
+                    <span id="hrmStatusText" class="state-indicator state-disconnected">Disconnected</span>
+                </div>
             </div>
 
             <div class="status-display">
@@ -315,62 +590,11 @@
             </div>
 
             <div class="controls">
-                <button id="btnStart" class="btn-start" onclick="startSession()">Start Training</button>
+                <button id="btnStart" class="btn-start" onclick="startSession()">Start</button>
                 <button id="btnPause" class="btn-pause" onclick="pauseSession()" disabled>Pause</button>
                 <button id="btnResume" class="btn-pause hidden" onclick="resumeSession()">Resume</button>
                 <button id="btnStop" class="btn-stop" onclick="stopSession()" disabled>Stop & Save</button>
             </div>
-        </div>
-
-        <!-- HRM & WaterRower Status Cards Side-by-Side -->
-        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
-            <!-- WaterRower Connection Card (Priority) -->
-            <div class="card" id="wrCard" style="flex: 1 1 350px;">
-                <h2>🚣 WaterRower Connection</h2>
-                <div style="margin-bottom: 10px;">
-                    Status: <span id="wrStatus" class="state-indicator state-idle">Disconnected</span>
-                </div>
-                <div class="controls" style="margin-bottom: 10px;">
-                    <button id="btnConnectWR" class="btn-start" onclick="connectWR()">Connect</button>
-                </div>
-                <div id="wrAlert" class="hidden"></div>
-            </div>
-
-            <!-- Heart Rate Monitor Card -->
-            <div class="card" id="hrmCard" style="flex: 1 1 350px;">
-                <h2>❤️ Heart Rate Monitor</h2>
-                <div style="margin-bottom: 10px;">
-                    Status: <span id="hrmStatus" class="state-indicator state-idle">Disconnected</span>
-                </div>
-                <div class="controls" style="margin-bottom: 10px;">
-                    <button id="btnDiscoverHRM" class="btn-secondary" onclick="discoverHRM()">Discover Devices</button>
-                    <select id="hrmDeviceSelect"
-                        style="min-width:200px;display:none;padding:8px;border:2px solid #e5e7eb;border-radius:6px;"
-                        onchange="selectHRMDevice()"></select>
-                    <button id="btnConnectHRM" class="btn-start hidden" onclick="connectHRM()">Connect</button>
-                    <button id="btnDisconnectHRM" class="btn-secondary hidden"
-                        onclick="disconnectHRM()">Disconnect</button>
-                </div>
-                <div id="hrmAlert" class="hidden"></div>
-            </div>
-        </div>
-
-        <!-- Garmin Configuration -->
-        <div class="card garmin-config">
-            <h2>⚙️ Garmin Connect Configuration</h2>
-            <div id="garminAlert" class="hidden"></div>
-            <div class="input-group">
-                <label for="garminEmail">Email:</label>
-                <input type="email" id="garminEmail" placeholder="your@email.com">
-            </div>
-            <div class="input-group">
-                <label for="garminPassword">Password:</label>
-                <input type="password" id="garminPassword" placeholder="Your Garmin password">
-            </div>
-            <button class="btn-secondary" onclick="configureGarmin()">Save & Test Connection</button>
-            <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
-                Status: <span id="garminStatus">Not configured</span>
-            </p>
         </div>
 
         <!-- Session History -->
@@ -397,7 +621,14 @@
 
         let selectedHRM = null;
         let hrmDevices = [];
-        let waterRowerConnected = false;
+
+        // Toggle configuration menu
+        function toggleConfigMenu() {
+            const menu = document.getElementById('configMenu');
+            const overlay = document.getElementById('configOverlay');
+            menu.classList.toggle('open');
+            overlay.classList.toggle('show');
+        }
 
         // Setup real-time WebSocket listeners
         function setupSocketListeners() {
@@ -685,34 +916,45 @@
             const hrmStatus = document.getElementById('hrmStatus');
             const btnConnect = document.getElementById('btnConnectHRM');
             const btnDisconnect = document.getElementById('btnDisconnectHRM');
+            const hrmStatusText = document.getElementById('hrmStatusText');
 
             if (data.connected) {
                 hrmStatus.textContent = `Connected (${data.deviceName || 'HRM'})`;
                 hrmStatus.className = 'state-indicator state-active';
                 btnConnect.classList.add('hidden');
                 btnDisconnect.classList.remove('hidden');
+                hrmStatusText.textContent = 'Connected';
+                hrmStatusText.className = 'state-indicator state-connected';
             } else {
                 hrmStatus.textContent = 'Disconnected';
                 hrmStatus.className = 'state-indicator state-idle';
                 btnConnect.classList.add('hidden');
                 btnDisconnect.classList.add('hidden');
+                hrmStatusText.textContent = 'Disconnected';
+                hrmStatusText.className = 'state-indicator state-disconnected';
             }
         }
 
         function updateWaterRowerUI(data) {
             const wrStatus = document.getElementById('wrStatus');
             const btnConnect = document.getElementById('btnConnectWR');
-
-            waterRowerConnected = data.connected;
+            const btnDisconnect = document.getElementById('btnDisconnectWR');
+            const wrStatusText = document.getElementById('wrStatusText');
 
             if (data.connected) {
                 wrStatus.textContent = 'Connected';
                 wrStatus.className = 'state-indicator state-active';
                 btnConnect.classList.add('hidden');
+                btnDisconnect.classList.remove('hidden');
+                wrStatusText.textContent = 'Connected';
+                wrStatusText.className = 'state-indicator state-connected';
             } else {
                 wrStatus.textContent = 'Disconnected';
                 wrStatus.className = 'state-indicator state-idle';
                 btnConnect.classList.remove('hidden');
+                btnDisconnect.classList.add('hidden');
+                wrStatusText.textContent = 'Disconnected';
+                wrStatusText.className = 'state-indicator state-disconnected';
             }
         }
 
@@ -743,7 +985,7 @@
                     ).join('');
                     select.style.display = '';
                     document.getElementById('btnConnectHRM').classList.remove('hidden');
-                    showHRMAlert('success', `Found ${hrmDevices.length} device(s). Select and connect.`);
+                    showHRMAlert('success', `Found ${hrmDevices.length} device(s)`);
                 } else {
                     showHRMAlert('error', 'No HRM devices found.');
                 }
