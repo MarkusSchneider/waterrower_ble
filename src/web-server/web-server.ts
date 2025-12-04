@@ -133,82 +133,16 @@ export class WebServer {
             });
         });
 
-        // Heart Rate Monitor (HRM) endpoints used by the web UI
-        this.app.get('/api/hrm/status', (req, res) => {
-            try {
-                const connected = this.heartRateMonitor.isConnected() ?? false;
-                const deviceName = (this.heartRateMonitor && typeof (this.heartRateMonitor as any).getDeviceName === 'function')
-                    ? (this.heartRateMonitor as any).getDeviceName()
-                    : undefined;
-                res.json({ connected, deviceName });
-            } catch (error: any) {
-                res.status(500).json({ error: error.message || 'Failed to get HRM status' });
-            }
-        });
+        // Heart Rate Monitor (HRM) endpoints used by the web UI - delegate to handlers
+        this.app.get('/api/hrm/status', (req, res) => { this.handleGetHRMStatus(req, res); });
+        this.app.get('/api/hrm/discover', (req, res) => { this.handleDiscoverHRM(req, res); });
+        this.app.post('/api/hrm/connect', (req, res) => { this.handleConnectHRM(req, res); });
+        this.app.post('/api/hrm/disconnect', (req, res) => { this.handleDisconnectHRM(req, res); });
 
-        this.app.get('/api/hrm/discover', async (req, res) => {
-            try {
-                if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).discoverDevices === 'function') {
-                    const devices = await (this.heartRateMonitor as any).discoverDevices();
-                    res.json({ devices });
-                } else {
-                    res.json({ devices: [] });
-                }
-            } catch (error: any) {
-                res.status(500).json({ error: error.message || 'Discovery failed' });
-            }
-        });
-
-        this.app.post('/api/hrm/connect', async (req, res) => {
-            try {
-                const { deviceId } = req.body || {};
-                if (!deviceId) {
-                    res.status(400).json({ success: false, error: 'deviceId required' });
-                    return;
-                }
-
-                if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).connect === 'function') {
-                    await (this.heartRateMonitor as any).connect(deviceId);
-                    res.json({ success: true });
-                } else {
-                    res.status(500).json({ success: false, error: 'HRM not available' });
-                }
-            } catch (error: any) {
-                res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
-            }
-        });
-
-        this.app.post('/api/hrm/disconnect', (req, res) => {
-            try {
-                if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).disconnect === 'function') {
-                    (this.heartRateMonitor as any).disconnect();
-                    res.json({ success: true });
-                } else {
-                    res.status(500).json({ success: false, error: 'HRM not available' });
-                }
-            } catch (error: any) {
-                res.status(500).json({ success: false, error: error.message || 'Failed to disconnect' });
-            }
-        });
-
-        // WaterRower connection endpoints used by the web UI
-        this.app.get('/api/waterrower/status', (req, res) => {
-            try {
-                const connected = this.waterRower.isConnected();
-                res.json({ connected });
-            } catch (error: any) {
-                res.status(500).json({ error: error.message || 'Failed to get WaterRower status' });
-            }
-        });
-
-        this.app.post('/api/waterrower/connect', async (req, res) => {
-            try {
-                this.waterRower.connectSerial();
-                res.json({ success: this.waterRower.isConnected() });
-            } catch (error: any) {
-                res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
-            }
-        });
+        // WaterRower connection endpoints used by the web UI - delegate to handlers
+        this.app.get('/api/waterrower/status', (req, res) => { this.handleGetWaterRowerStatus(req, res); });
+        this.app.post('/api/waterrower/connect', (req, res) => { this.handleConnectWaterRower(req, res); });
+        this.app.post('/api/waterrower/disconnect', (req, res) => { this.handleDisconnectWaterRower(req, res); });
 
         // Serve the web UI
         this.app.get('/', (req, res) => {
@@ -451,6 +385,105 @@ export class WebServer {
             res.status(500).json({
                 error: error.message || 'Failed to upload to Garmin'
             });
+        }
+    }
+
+    // --- New handler methods for HRM and WaterRower (delegated from setupRoutes)
+    private handleGetHRMStatus(req: Request, res: Response): void {
+        try {
+            const connected = this.heartRateMonitor?.isConnected?.() ?? false;
+            const deviceName = (this.heartRateMonitor && typeof (this.heartRateMonitor as any).getDeviceName === 'function')
+                ? (this.heartRateMonitor as any).getDeviceName()
+                : undefined;
+            res.json({ connected, deviceName });
+        } catch (error: any) {
+            res.status(500).json({ error: error.message || 'Failed to get HRM status' });
+        }
+    }
+
+    private async handleDiscoverHRM(req: Request, res: Response): Promise<void> {
+        try {
+            if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).discoverDevices === 'function') {
+                const devices = await (this.heartRateMonitor as any).discoverDevices();
+                res.json({ devices });
+            } else {
+                res.json({ devices: [] });
+            }
+        } catch (error: any) {
+            res.status(500).json({ error: error.message || 'Discovery failed' });
+        }
+    }
+
+    private async handleConnectHRM(req: Request, res: Response): Promise<void> {
+        try {
+            const { deviceId } = req.body || {};
+            if (!deviceId) {
+                res.status(400).json({ success: false, error: 'deviceId required' });
+                return;
+            }
+
+            if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).connect === 'function') {
+                await (this.heartRateMonitor as any).connect(deviceId);
+                res.json({ success: true });
+            } else {
+                res.status(500).json({ success: false, error: 'HRM not available' });
+            }
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
+        }
+    }
+
+    private handleDisconnectHRM(req: Request, res: Response): void {
+        try {
+            if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).disconnect === 'function') {
+                (this.heartRateMonitor as any).disconnect();
+                res.json({ success: true });
+            } else {
+                res.status(500).json({ success: false, error: 'HRM not available' });
+            }
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message || 'Failed to disconnect' });
+        }
+    }
+
+    private handleGetWaterRowerStatus(req: Request, res: Response): void {
+        try {
+            const connected = this.waterRower?.isConnected?.() ?? false;
+            const deviceName = (this.waterRower && typeof (this.waterRower as any).getDeviceName === 'function')
+                ? (this.waterRower as any).getDeviceName()
+                : undefined;
+            res.json({ connected, deviceName });
+        } catch (error: any) {
+            res.status(500).json({ error: error.message || 'Failed to get WaterRower status' });
+        }
+    }
+
+    private async handleConnectWaterRower(req: Request, res: Response): Promise<void> {
+        try {
+            if (this.waterRower && typeof (this.waterRower as any).connectSerial === 'function') {
+                await (this.waterRower as any).connectSerial();
+                res.json({ success: this.waterRower.isConnected ? this.waterRower.isConnected() : true });
+            } else if (this.waterRower && typeof (this.waterRower as any).connect === 'function') {
+                await (this.waterRower as any).connect();
+                res.json({ success: this.waterRower.isConnected ? this.waterRower.isConnected() : true });
+            } else {
+                res.status(500).json({ success: false, error: 'WaterRower not available' });
+            }
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
+        }
+    }
+
+    private handleDisconnectWaterRower(req: Request, res: Response): void {
+        try {
+            if (this.waterRower && typeof (this.waterRower as any).disconnect === 'function') {
+                (this.waterRower as any).disconnect();
+                res.json({ success: true });
+            } else {
+                res.status(500).json({ success: false, error: 'WaterRower not available' });
+            }
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: error.message || 'Failed to disconnect' });
         }
     }
 
