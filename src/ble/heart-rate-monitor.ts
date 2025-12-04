@@ -33,6 +33,24 @@ export class HeartRateMonitor extends EventEmitter {
         });
     }
 
+    public async discover(deviceName?: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            noble.on('discover', async (peripheral) => {
+                const name = peripheral.advertisement.localName;
+                const hasHeartRateService = peripheral.advertisement.serviceUuids?.includes(HEART_RATE_SERVICE_UUID);
+
+                logger(`Discovered device: ${name} - HR Service: ${hasHeartRateService}`);
+
+                if (hasHeartRateService && (!deviceName || name === deviceName)) {
+                    noble.stopScanning();
+                    resolve();
+                }
+            });
+
+            noble.startScanning([HEART_RATE_SERVICE_UUID], false);
+        });
+    }
+
     public async connect(deviceName?: string, timeout = 30000): Promise<void> {
         if (this.connected) {
             logger('Already connected to heart rate monitor');

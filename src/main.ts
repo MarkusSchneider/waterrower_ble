@@ -128,10 +128,9 @@ function startWebServer(): void {
   waterRower.connectSerial();
 
   // Optional: Load Garmin credentials from environment variables
-  const garminCredentials = process.env.GARMIN_EMAIL && process.env.GARMIN_PASSWORD ? {
-    email: process.env.GARMIN_EMAIL,
-    password: process.env.GARMIN_PASSWORD
-  } : undefined;
+  const garminCredentials = process.env.GARMIN_EMAIL && process.env.GARMIN_PASSWORD
+    ? { email: process.env.GARMIN_EMAIL, password: process.env.GARMIN_PASSWORD }
+    : { email: '', password: '' };
 
   if (garminCredentials) {
     logger('Garmin credentials loaded from environment');
