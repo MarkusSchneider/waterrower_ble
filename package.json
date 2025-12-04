@@ -30,7 +30,8 @@
     "express": "5.1.0",
     "garmin-connect": "1.6.2",
     "rxjs": "7.8.2",
-    "serialport": "13.0.0"
+    "serialport": "13.0.0",
+    "socket.io": "4.7.2"
   },
   "devDependencies": {
     "@types/cors": "2.8.19",

@@ -383,38 +383,60 @@
         </div>
     </div>
 
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         const API_BASE = window.location.origin + '/api';
+        const socket = io();
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             checkGarminStatus();
             loadSessionHistory();
-            startStatusPolling();
-            updateHRMStatus();
-            updateWRStatus();
+            setupSocketListeners();
         });
 
         let selectedHRM = null;
         let hrmDevices = [];
         let waterRowerConnected = false;
 
-        function startStatusPolling() {
-            const interval = 60000; // 60 seconds
-            setInterval(updateStatus, interval);
-            setInterval(updateHRMStatus, interval);
-            setInterval(updateWRStatus, interval);
-        }
-
-        async function updateStatus() {
-            try {
-                const response = await fetch(`${API_BASE}/session/status`);
-                const data = await response.json();
-
+        // Setup real-time WebSocket listeners
+        function setupSocketListeners() {
+            // Session updates - real-time
+            socket.on('session:updated', (data) => {
                 updateUI(data);
-            } catch (error) {
-                console.error('Status update error:', error);
-            }
+            });
+
+            // Real-time datapoints during active session
+            socket.on('session:datapoint', (dataPoint) => {
+                // Update UI with latest datapoint info
+                if (dataPoint.strokeRate !== undefined) {
+                    document.getElementById('strokeRateValue').textContent = dataPoint.strokeRate;
+                }
+            });
+
+            // HRM status changes
+            socket.on('hrm:updated', (data) => {
+                updateHRMUI(data);
+            });
+
+            // WaterRower status changes
+            socket.on('waterrower:updated', (data) => {
+                updateWaterRowerUI(data);
+            });
+
+            // Garmin status changes
+            socket.on('garmin:updated', (data) => {
+                updateGarminStatusUI(data);
+            });
+
+            // Connection status
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from server');
+            });
         }
 
         function updateUI(data) {
@@ -476,7 +498,6 @@
 
                 if (response.ok && data.success) {
                     showAlert('success', 'Training session started!');
-                    updateStatus();
                 } else {
                     showAlert('error', data.error || 'Failed to start session');
                 }
@@ -660,23 +681,49 @@
             setTimeout(() => alertDiv.classList.add('hidden'), 5000);
         }
 
-        async function updateHRMStatus() {
-            try {
-                const response = await fetch(`${API_BASE}/hrm/status`);
-                const data = await response.json();
-                const hrmStatus = document.getElementById('hrmStatus');
+        function updateHRMUI(data) {
+            const hrmStatus = document.getElementById('hrmStatus');
+            const btnConnect = document.getElementById('btnConnectHRM');
+            const btnDisconnect = document.getElementById('btnDisconnectHRM');
 
-                if (data.connected) {
-                    hrmStatus.textContent = `Connected (${data.deviceName || 'HRM'})`;
-                    hrmStatus.className = 'state-indicator state-active';
-                } else {
-                    hrmStatus.textContent = 'Disconnected';
-                    hrmStatus.className = 'state-indicator state-idle';
-                }
-            } catch (error) {
-                console.error(error);
-                document.getElementById('hrmStatus').textContent = 'Error';
+            if (data.connected) {
+                hrmStatus.textContent = `Connected (${data.deviceName || 'HRM'})`;
+                hrmStatus.className = 'state-indicator state-active';
+                btnConnect.classList.add('hidden');
+                btnDisconnect.classList.remove('hidden');
+            } else {
+                hrmStatus.textContent = 'Disconnected';
+                hrmStatus.className = 'state-indicator state-idle';
+                btnConnect.classList.add('hidden');
+                btnDisconnect.classList.add('hidden');
             }
+        }
+
+        function updateWaterRowerUI(data) {
+            const wrStatus = document.getElementById('wrStatus');
+            const btnConnect = document.getElementById('btnConnectWR');
+
+            waterRowerConnected = data.connected;
+
+            if (data.connected) {
+                wrStatus.textContent = 'Connected';
+                wrStatus.className = 'state-indicator state-active';
+                btnConnect.classList.add('hidden');
+                if (btnDisconnect) btnDisconnect.classList.remove('hidden');
+            } else {
+                wrStatus.textContent = 'Disconnected';
+                wrStatus.className = 'state-indicator state-idle';
+                btnConnect.classList.remove('hidden');
+                if (btnDisconnect) btnDisconnect.classList.add('hidden');
+            }
+        }
+
+        function updateGarminStatusUI(data) {
+            const statusText = data.configured && data.authenticated ?
+                '✅ Connected' :
+                (data.configured ? '⚠️ Configured but not authenticated' : '❌ Not configured');
+
+            document.getElementById('garminStatus').textContent = statusText;
         }
 
         async function discoverHRM() {
@@ -733,7 +780,6 @@
                 const data = await response.json();
                 if (data.success) {
                     showHRMAlert('success', 'Connected to HRM!');
-                    updateHRMStatus();
                 } else {
                     showHRMAlert('error', data.error || 'Failed to connect');
                 }
@@ -749,7 +795,6 @@
                 const data = await response.json();
                 if (data.success) {
                     showHRMAlert('success', 'Disconnected from HRM');
-                    updateHRMStatus();
                 } else {
                     showHRMAlert('error', data.error || 'Failed to disconnect');
                 }
@@ -767,32 +812,6 @@
             setTimeout(() => alertDiv.classList.add('hidden'), 5000);
         }
 
-        async function updateWRStatus() {
-            try {
-                const response = await fetch(`${API_BASE}/waterrower/status`);
-                const data = await response.json();
-                const wrStatus = document.getElementById('wrStatus');
-                const btnConnect = document.getElementById('btnConnectWR');
-
-                waterRowerConnected = data.connected;
-
-                if (data.connected) {
-                    wrStatus.textContent = 'Connected';
-                    wrStatus.className = 'state-indicator state-active';
-                    btnConnect.classList.add('hidden');
-                    btnDisconnect.classList.remove('hidden');
-                } else {
-                    wrStatus.textContent = 'Disconnected';
-                    wrStatus.className = 'state-indicator state-idle';
-                    btnConnect.classList.remove('hidden');
-                    btnDisconnect.classList.add('hidden');
-                }
-            } catch (error) {
-                console.error(error);
-                document.getElementById('wrStatus').textContent = 'Error';
-            }
-        }
-
         async function connectWR() {
             try {
                 const btnConnect = document.getElementById('btnConnectWR');
@@ -804,7 +823,6 @@
                 btnConnect.textContent = 'Connect';
                 if (data.success) {
                     showWRAlert('success', 'Connected to WaterRower!');
-                    updateWRStatus();
                 } else {
                     showWRAlert('error', data.error || 'Failed to connect');
                 }
@@ -813,6 +831,20 @@
                 showWRAlert('error', 'Connection error: ' + error.message);
                 document.getElementById('btnConnectWR').disabled = false;
                 document.getElementById('btnConnectWR').textContent = 'Connect';
+            }
+        }
+
+        async function disconnectWR() {
+            try {
+                const response = await fetch(`${API_BASE}/waterrower/disconnect`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showWRAlert('success', 'Disconnected from WaterRower');
+                } else {
+                    showWRAlert('error', data.error || 'Failed to disconnect');
+                }
+            } catch (error) {
+                showWRAlert('error', 'Error: ' + error.message);
             }
         }
 

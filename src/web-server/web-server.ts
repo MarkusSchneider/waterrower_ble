@@ -4,6 +4,8 @@ import express, {
     Request,
     Response,
 } from 'express';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
 
 import { HeartRateMonitor } from '../ble/heart-rate-monitor';
@@ -28,6 +30,8 @@ export interface WebServerOptions {
 
 export class WebServer {
     private app: express.Application;
+    private httpServer: any;
+    private io: SocketIOServer;
     private waterRower: WaterRower;
     private heartRateMonitor: HeartRateMonitor;
     private currentSession: TrainingSession | null;
@@ -38,6 +42,13 @@ export class WebServer {
 
     constructor(private options: WebServerOptions) {
         this.app = express();
+        this.httpServer = createServer(this.app);
+        this.io = new SocketIOServer(this.httpServer, {
+            cors: {
+                origin: '*',
+                methods: ['GET', 'POST']
+            }
+        });
         this.waterRower = options.waterRower;
         this.heartRateMonitor = options.heartRateMonitor;
         this.configManager = options.configManager;
@@ -47,6 +58,7 @@ export class WebServer {
 
         this.setupMiddleware();
         this.setupRoutes();
+        this.setupSocketIO();
     }
 
     private setupMiddleware(): void {
@@ -64,9 +76,6 @@ export class WebServer {
     private setupRoutes(): void {
         // Health check
         this.app.get('/api/health', (req, res) => { res.json({ status: 'ok', timestamp: new Date() }); });
-
-        // Get current session status
-        this.app.get('/api/session/status', (req, res) => { this.handleGetStatus(req, res); });
 
         // Start training session
         this.app.post('/api/session/start', async (req, res) => { await this.handleStartSession(req, res); });
@@ -101,22 +110,36 @@ export class WebServer {
         });
 
         // Heart Rate Monitor (HRM) endpoints used by the web UI - delegate to handlers
-        this.app.get('/api/hrm/status', (req, res) => { this.handleGetHRMStatus(req, res); });
         this.app.get('/api/hrm/discover', (req, res) => { this.handleDiscoverHRM(req, res); });
         this.app.post('/api/hrm/connect', (req, res) => { this.handleConnectHRM(req, res); });
         this.app.post('/api/hrm/disconnect', (req, res) => { this.handleDisconnectHRM(req, res); });
 
         // WaterRower connection endpoints used by the web UI - delegate to handlers
-        this.app.get('/api/waterrower/status', (req, res) => { this.handleGetWaterRowerStatus(req, res); });
         this.app.post('/api/waterrower/connect', (req, res) => { this.handleConnectWaterRower(req, res); });
 
         // Serve the web UI
         this.app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
     }
 
-    private handleGetStatus(req: Request, res: Response): void {
+    private setupSocketIO(): void {
+        this.io.on('connection', (socket) => {
+            logger(`Client connected: ${socket.id}`);
+
+            // Send initial status on connection
+            this.emitSessionStatus();
+            this.emitHRMStatus();
+            this.emitWaterRowerStatus();
+            this.emitGarminStatus();
+
+            socket.on('disconnect', () => {
+                logger(`Client disconnected: ${socket.id}`);
+            });
+        });
+    }
+
+    private emitSessionStatus(): void {
         if (!this.currentSession) {
-            res.json({
+            this.io.emit('session:updated', {
                 state: SessionState.IDLE,
                 session: null
             });
@@ -124,9 +147,36 @@ export class WebServer {
         }
 
         const summary = this.currentSession.getSummary();
-        res.json({
+        this.io.emit('session:updated', {
             state: this.currentSession.getState(),
             session: summary
+        });
+    }
+
+    private emitHRMStatus(): void {
+        try {
+            const connected = this.heartRateMonitor.isConnected();
+            const deviceName = this.heartRateMonitor.getDeviceName();
+            this.io.emit('hrm:updated', { connected, deviceName });
+        } catch (error: any) {
+            logger('Error emitting HRM status:', error);
+        }
+    }
+
+    private emitWaterRowerStatus(): void {
+        try {
+            const connected = this.waterRower.isConnected();
+            const deviceName = 'Waterrower';
+            this.io.emit('waterrower:updated', { connected, deviceName });
+        } catch (error: any) {
+            logger('Error emitting WaterRower status:', error);
+        }
+    }
+
+    private emitGarminStatus(): void {
+        this.io.emit('garmin:updated', {
+            configured: !!this.configManager.getGarminCredentials(),
+            authenticated: this.garminUploader.isLoggedIn()
         });
     }
 
@@ -156,11 +206,14 @@ export class WebServer {
             // Setup event handlers
             this.currentSession.on('started', (data) => {
                 logger('Session started:', data);
+                this.emitSessionStatus();
             });
 
             this.currentSession.on('datapoint', (dataPoint) => {
-                // Could emit this via WebSocket for real-time updates
-                logger('New datapoint:', dataPoint);
+                // Emit real-time datapoint via WebSocket
+                this.io.emit('session:datapoint', dataPoint);
+                // Also emit updated summary
+                this.emitSessionStatus();
             });
 
             await this.currentSession.start();
@@ -239,6 +292,8 @@ export class WebServer {
                 }
             }
 
+            // Emit session end
+            this.emitSessionStatus();
             res.json(response);
         } catch (error: any) {
             logger('Error stopping session:', error);
@@ -256,6 +311,7 @@ export class WebServer {
             }
 
             this.currentSession.pause();
+            this.emitSessionStatus();
             res.json({ success: true, message: 'Session paused' });
         } catch (error: any) {
             res.status(400).json({ error: error.message });
@@ -270,6 +326,7 @@ export class WebServer {
             }
 
             this.currentSession.resume();
+            this.emitSessionStatus();
             res.json({ success: true, message: 'Session resumed' });
         } catch (error: any) {
             res.status(400).json({ error: error.message });
@@ -309,6 +366,7 @@ export class WebServer {
             // Test login
             await this.garminUploader.login(garminCredentials);
 
+            this.emitGarminStatus();
             res.json({
                 success: true,
                 message: 'Garmin Connect configured and authenticated'
@@ -359,16 +417,6 @@ export class WebServer {
         }
     }
 
-    private handleGetHRMStatus(req: Request, res: Response): void {
-        try {
-            const connected = this.heartRateMonitor.isConnected();
-            const deviceName = this.heartRateMonitor.getDeviceName();
-            res.json({ connected: connected, deviceName: deviceName });
-        } catch (error: any) {
-            res.status(500).json({ error: error.message || 'Failed to get HRM status' });
-        }
-    }
-
     private async handleDiscoverHRM(req: Request, res: Response): Promise<void> {
         try {
             const devices = await this.heartRateMonitor.discover();
@@ -394,6 +442,7 @@ export class WebServer {
             this.configManager.setHRMDevice(deviceId, name);
             logger(`HRM device saved to config: ${name}`);
 
+            this.emitHRMStatus();
             res.json({ success: true });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
@@ -403,19 +452,10 @@ export class WebServer {
     private handleDisconnectHRM(req: Request, res: Response): void {
         try {
             this.heartRateMonitor.disconnect();
+            this.emitHRMStatus();
             res.json({ success: true });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to disconnect' });
-        }
-    }
-
-    private handleGetWaterRowerStatus(req: Request, res: Response): void {
-        try {
-            const connected = this.waterRower.isConnected();
-            const deviceName = "Waterrower";
-            res.json({ connected, deviceName });
-        } catch (error: any) {
-            res.status(500).json({ error: error.message || 'Failed to get WaterRower status' });
         }
     }
 
@@ -433,6 +473,7 @@ export class WebServer {
                 }
             }
 
+            this.emitWaterRowerStatus();
             res.json({ success });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
@@ -441,7 +482,7 @@ export class WebServer {
 
     public start(): void {
         const port = this.configManager.getPort();
-        this.app.listen(port, () => {
+        this.httpServer.listen(port, () => {
             logger(`Web server running on http://localhost:${port}`);
             console.log(`\n🚣 WaterRower Training Server`);
             console.log(`📡 Web interface: http://localhost:${port}`);
