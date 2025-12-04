@@ -332,8 +332,6 @@
                 </div>
                 <div class="controls" style="margin-bottom: 10px;">
                     <button id="btnConnectWR" class="btn-start" onclick="connectWR()">Connect</button>
-                    <button id="btnDisconnectWR" class="btn-secondary hidden"
-                        onclick="disconnectWR()">Disconnect</button>
                 </div>
                 <div id="wrAlert" class="hidden"></div>
             </div>
@@ -483,6 +481,7 @@
                     showAlert('error', data.error || 'Failed to start session');
                 }
             } catch (error) {
+                console.error(error);
                 showAlert('error', 'Error starting session: ' + error.message);
             }
         }
@@ -507,6 +506,7 @@
                     showAlert('error', data.error || 'Failed to stop session');
                 }
             } catch (error) {
+                console.error(error);
                 showAlert('error', 'Error stopping session: ' + error.message);
             }
         }
@@ -520,6 +520,7 @@
                     showAlert('success', 'Session paused');
                 }
             } catch (error) {
+                console.error(error);
                 showAlert('error', 'Error pausing session: ' + error.message);
             }
         }
@@ -533,6 +534,7 @@
                     showAlert('success', 'Session resumed');
                 }
             } catch (error) {
+                console.error(error);
                 showAlert('error', 'Error resuming session: ' + error.message);
             }
         }
@@ -563,6 +565,7 @@
                     showGarminAlert('error', data.error || 'Configuration failed');
                 }
             } catch (error) {
+                console.error(error);
                 showGarminAlert('error', 'Error: ' + error.message);
             }
         }
@@ -632,6 +635,7 @@
                     showAlert('error', data.error || 'Upload failed');
                 }
             } catch (error) {
+                console.error(error);
                 showAlert('error', 'Error: ' + error.message);
             }
         }
@@ -661,18 +665,16 @@
                 const response = await fetch(`${API_BASE}/hrm/status`);
                 const data = await response.json();
                 const hrmStatus = document.getElementById('hrmStatus');
-                const hrmOptional = document.getElementById('hrmOptional');
 
                 if (data.connected) {
                     hrmStatus.textContent = `Connected (${data.deviceName || 'HRM'})`;
                     hrmStatus.className = 'state-indicator state-active';
-                    hrmOptional.textContent = '✅';
                 } else {
                     hrmStatus.textContent = 'Disconnected';
                     hrmStatus.className = 'state-indicator state-idle';
-                    hrmOptional.textContent = '⚪';
                 }
             } catch (error) {
+                console.error(error);
                 document.getElementById('hrmStatus').textContent = 'Error';
             }
         }
@@ -701,6 +703,7 @@
                     showHRMAlert('error', 'No HRM devices found.');
                 }
             } catch (error) {
+                console.error(error);
                 showHRMAlert('error', 'Discovery error: ' + error.message);
                 document.getElementById('btnDiscoverHRM').disabled = false;
                 document.getElementById('btnDiscoverHRM').textContent = 'Discover Devices';
@@ -735,6 +738,7 @@
                     showHRMAlert('error', data.error || 'Failed to connect');
                 }
             } catch (error) {
+                console.error(error);
                 showHRMAlert('error', 'Connection error: ' + error.message);
             }
         }
@@ -750,6 +754,7 @@
                     showHRMAlert('error', data.error || 'Failed to disconnect');
                 }
             } catch (error) {
+                console.error(error);
                 showHRMAlert('error', 'Error: ' + error.message);
             }
         }
@@ -768,8 +773,6 @@
                 const data = await response.json();
                 const wrStatus = document.getElementById('wrStatus');
                 const btnConnect = document.getElementById('btnConnectWR');
-                const btnDisconnect = document.getElementById('btnDisconnectWR');
-                const wrRequired = document.getElementById('wrRequired');
 
                 waterRowerConnected = data.connected;
 
@@ -778,15 +781,14 @@
                     wrStatus.className = 'state-indicator state-active';
                     btnConnect.classList.add('hidden');
                     btnDisconnect.classList.remove('hidden');
-                    wrRequired.textContent = '✅';
                 } else {
                     wrStatus.textContent = 'Disconnected';
                     wrStatus.className = 'state-indicator state-idle';
                     btnConnect.classList.remove('hidden');
                     btnDisconnect.classList.add('hidden');
-                    wrRequired.textContent = '❌';
                 }
             } catch (error) {
+                console.error(error);
                 document.getElementById('wrStatus').textContent = 'Error';
             }
         }
@@ -807,24 +809,10 @@
                     showWRAlert('error', data.error || 'Failed to connect');
                 }
             } catch (error) {
+                console.error(error);
                 showWRAlert('error', 'Connection error: ' + error.message);
                 document.getElementById('btnConnectWR').disabled = false;
                 document.getElementById('btnConnectWR').textContent = 'Connect';
-            }
-        }
-
-        async function disconnectWR() {
-            try {
-                const response = await fetch(`${API_BASE}/waterrower/disconnect`, { method: 'POST' });
-                const data = await response.json();
-                if (data.success) {
-                    showWRAlert('success', 'Disconnected from WaterRower');
-                    updateWRStatus();
-                } else {
-                    showWRAlert('error', data.error || 'Failed to disconnect');
-                }
-            } catch (error) {
-                showWRAlert('error', 'Error: ' + error.message);
             }
         }
 

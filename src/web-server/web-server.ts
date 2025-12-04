@@ -363,7 +363,7 @@ export class WebServer {
         try {
             const connected = this.heartRateMonitor.isConnected();
             const deviceName = this.heartRateMonitor.getDeviceName();
-            res.json({ connected, deviceName });
+            res.json({ connected: connected, deviceName: deviceName });
         } catch (error: any) {
             res.status(500).json({ error: error.message || 'Failed to get HRM status' });
         }
