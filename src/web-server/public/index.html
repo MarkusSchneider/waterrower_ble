@@ -382,7 +382,6 @@
 
     <script>
         const API_BASE = window.location.origin + '/api';
-        let updateInterval = null;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -394,7 +393,10 @@
         });
 
         function startStatusPolling() {
-            updateInterval = setInterval(updateStatus, 1000);
+            const interval = 60000; // 60 seconds
+            setInterval(updateStatus, interval);
+            setInterval(updateHRMStatus, interval);
+            setInterval(updateWRStatus, interval);
         }
 
         async function updateStatus() {
@@ -661,9 +663,6 @@
             }
         }
 
-        // Poll HRM status every 3s
-        setInterval(updateHRMStatus, 3000);
-
         async function discoverHRM() {
             try {
                 const btnDiscover = document.getElementById('btnDiscoverHRM');
@@ -674,8 +673,9 @@
                 btnDiscover.disabled = false;
                 btnDiscover.textContent = 'Discover Devices';
 
-                if (data.devices && data.devices.length > 0) {
-                    hrmDevices = data.devices;
+                if (data.length > 0) {
+                    selectedHRM = data[0].id;
+                    hrmDevices = data;
                     const select = document.getElementById('hrmDeviceSelect');
                     select.innerHTML = hrmDevices.map(d =>
                         `<option value="${d.id}">${d.name || d.id}</option>`
@@ -750,9 +750,6 @@
                 document.getElementById('wrStatus').textContent = 'Error';
             }
         }
-
-        // Poll WaterRower status every 3s
-        setInterval(updateWRStatus, 3000);
 
         async function connectWR() {
             try {

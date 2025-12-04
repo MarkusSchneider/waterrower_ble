@@ -9,6 +9,7 @@ const logger = debug('HR_MONITOR');
 const HEART_RATE_SERVICE_UUID = '180d';
 const HEART_RATE_MEASUREMENT_UUID = '2a37';
 
+
 export class HeartRateMonitor extends EventEmitter {
     private peripheral?: noble.Peripheral;
     private characteristic?: noble.Characteristic;
@@ -33,25 +34,32 @@ export class HeartRateMonitor extends EventEmitter {
         });
     }
 
-    public async discover(deviceName?: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            noble.on('discover', async (peripheral) => {
+    public async discover(): Promise<Array<{ id: string; name: string | undefined }>> {
+        return new Promise((resolve) => {
+            const devices: Array<{ id: string; name: string | undefined }> = [];
+            const discoveryHandler = (peripheral: noble.Peripheral) => {
                 const name = peripheral.advertisement.localName;
                 const hasHeartRateService = peripheral.advertisement.serviceUuids?.includes(HEART_RATE_SERVICE_UUID);
 
-                logger(`Discovered device: ${name} - HR Service: ${hasHeartRateService}`);
-
-                if (hasHeartRateService && (!deviceName || name === deviceName)) {
-                    noble.stopScanning();
-                    resolve();
+                if (!devices.find(d => d.id === peripheral.id)) {
+                    devices.push({ id: peripheral.id, name });
                 }
-            });
 
+                logger(`Discovered device: ${name} - HR Service: ${hasHeartRateService}`);
+            };
+
+            noble.on('discover', discoveryHandler);
             noble.startScanning([HEART_RATE_SERVICE_UUID], false);
+
+            setTimeout(() => {
+                noble.removeListener('discover', discoveryHandler);
+                noble.stopScanning();
+                resolve(devices);
+            }, 10000);
         });
     }
 
-    public async connect(deviceName?: string, timeout = 30000): Promise<void> {
+    public async connect(deviceId: string, timeout = 30000): Promise<void> {
         if (this.connected) {
             logger('Already connected to heart rate monitor');
             return;
@@ -67,13 +75,14 @@ export class HeartRateMonitor extends EventEmitter {
             logger('Starting scan for heart rate monitors...');
 
             noble.on('discover', async (peripheral) => {
-                const name = peripheral.advertisement.localName;
+                const id = peripheral.id;
                 const hasHeartRateService = peripheral.advertisement.serviceUuids?.includes(HEART_RATE_SERVICE_UUID);
 
+                const name = peripheral.advertisement.localName;
                 logger(`Discovered device: ${name} - HR Service: ${hasHeartRateService}`);
 
                 // Connect if it has heart rate service and matches name filter (if provided)
-                if (hasHeartRateService && (!deviceName || name === deviceName)) {
+                if (hasHeartRateService && id === deviceId) {
                     clearTimeout(timeoutHandle);
                     noble.stopScanning();
                     this.scanning = false;

@@ -393,12 +393,8 @@ export class WebServer {
                 return;
             }
 
-            if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).connect === 'function') {
-                await (this.heartRateMonitor as any).connect(deviceId);
-                res.json({ success: true });
-            } else {
-                res.status(500).json({ success: false, error: 'HRM not available' });
-            }
+            await this.heartRateMonitor.connect(deviceId);
+            res.json({ success: true });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
         }
@@ -406,12 +402,8 @@ export class WebServer {
 
     private handleDisconnectHRM(req: Request, res: Response): void {
         try {
-            if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).disconnect === 'function') {
-                (this.heartRateMonitor as any).disconnect();
-                res.json({ success: true });
-            } else {
-                res.status(500).json({ success: false, error: 'HRM not available' });
-            }
+            this.heartRateMonitor.disconnect();
+            res.json({ success: true });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to disconnect' });
         }
