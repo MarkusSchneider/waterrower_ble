@@ -36,7 +36,7 @@ export class WaterRower extends events.EventEmitter {
     }
 
     public connectSerial(): void {
-        if (this.options.portName == null) {
+        if (this.options.portName?.length === 0) {
             logger('No port configured. Attempting to discover...');
 
             this.discoverPort(name => {

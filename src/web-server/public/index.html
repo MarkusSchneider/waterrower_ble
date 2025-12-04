@@ -322,6 +322,37 @@
             </div>
         </div>
 
+        <!-- HRM & WaterRower Status Cards Side-by-Side -->
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+            <!-- Heart Rate Monitor Card -->
+            <div class="card" id="hrmCard" style="flex: 1 1 350px;">
+                <h2>❤️ Heart Rate Monitor</h2>
+                <div style="margin-bottom: 10px;">
+                    Status: <span id="hrmStatus" class="state-indicator state-idle">Disconnected</span>
+                </div>
+                <div class="controls" style="margin-bottom: 10px;">
+                    <button id="btnDiscoverHRM" class="btn-secondary" onclick="discoverHRM()">Discover Devices</button>
+                    <select id="hrmDeviceSelect" style="min-width:200px;display:none;"
+                        onchange="selectHRMDevice()"></select>
+                    <button id="btnConnectHRM" class="btn-start hidden" onclick="connectHRM()">Connect</button>
+                </div>
+                <div id="hrmAlert" class="hidden"></div>
+            </div>
+
+            <!-- WaterRower Connection Card -->
+            <div class="card" id="wrCard" style="flex: 1 1 350px;">
+                <h2>🚣 WaterRower Connection</h2>
+                <div style="margin-bottom: 10px;">
+                    Status: <span id="wrStatus" class="state-indicator state-idle">Disconnected</span>
+                </div>
+                <div class="controls" style="margin-bottom: 10px;">
+                    <button id="btnConnectWR" class="btn-start" onclick="connectWR()">Connect</button>
+                    <button id="btnDisconnectWR" class="btn-stop hidden" onclick="disconnectWR()">Disconnect</button>
+                </div>
+                <div id="wrAlert" class="hidden"></div>
+            </div>
+        </div>
+
         <!-- Garmin Configuration -->
         <div class="card garmin-config">
             <h2>⚙️ Garmin Connect Configuration</h2>
@@ -344,7 +375,8 @@
         <div class="card">
             <h2>📊 Session History</h2>
             <div id="sessionHistory" class="session-history">
-                <p style="color: #999; text-align: center; padding: 20px;">No sessions yet. Start your first training!</p>
+                <p style="color: #999; text-align: center; padding: 20px;">No sessions yet. Start your first training!
+                </p>
             </div>
         </div>
     </div>
@@ -358,6 +390,8 @@
             checkGarminStatus();
             loadSessionHistory();
             startStatusPolling();
+            updateHRMStatus();
+            updateWRStatus();
         });
 
         function startStatusPolling() {
@@ -608,6 +642,169 @@
             alertDiv.textContent = message;
             alertDiv.classList.remove('hidden');
 
+            setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+        }
+
+        async function updateHRMStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/hrm/status`);
+                const data = await response.json();
+                const hrmStatus = document.getElementById('hrmStatus');
+                if (data.connected) {
+                    hrmStatus.textContent = `Connected (${data.deviceName || 'HRM'})`;
+                    hrmStatus.className = 'state-indicator state-active';
+                } else {
+                    hrmStatus.textContent = 'Disconnected';
+                    hrmStatus.className = 'state-indicator state-idle';
+                }
+            } catch (error) {
+                document.getElementById('hrmStatus').textContent = 'Error';
+            }
+        }
+
+        // Poll HRM status every 3s
+        setInterval(updateHRMStatus, 3000);
+
+        async function discoverHRM() {
+            try {
+                const btnDiscover = document.getElementById('btnDiscoverHRM');
+                btnDiscover.disabled = true;
+                btnDiscover.textContent = 'Discovering...';
+                const response = await fetch(`${API_BASE}/hrm/discover`);
+                const data = await response.json();
+                btnDiscover.disabled = false;
+                btnDiscover.textContent = 'Discover Devices';
+
+                if (data.devices && data.devices.length > 0) {
+                    hrmDevices = data.devices;
+                    const select = document.getElementById('hrmDeviceSelect');
+                    select.innerHTML = hrmDevices.map(d =>
+                        `<option value="${d.id}">${d.name || d.id}</option>`
+                    ).join('');
+                    select.style.display = '';
+                    document.getElementById('btnConnectHRM').classList.remove('hidden');
+                    showHRMAlert('success', `Found ${hrmDevices.length} device(s). Select and connect.`);
+                } else {
+                    showHRMAlert('error', 'No HRM devices found.');
+                }
+            } catch (error) {
+                showHRMAlert('error', 'Discovery error: ' + error.message);
+                document.getElementById('btnDiscoverHRM').disabled = false;
+                document.getElementById('btnDiscoverHRM').textContent = 'Discover Devices';
+            }
+        }
+
+        function selectHRMDevice() {
+            const select = document.getElementById('hrmDeviceSelect');
+            selectedHRM = select.value;
+        }
+
+        async function connectHRM() {
+            if (!selectedHRM) {
+                showHRMAlert('error', 'Select a device first.');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/hrm/connect`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deviceId: selectedHRM })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showHRMAlert('success', 'Connected to HRM!');
+                    updateHRMStatus();
+                } else {
+                    showHRMAlert('error', data.error || 'Failed to connect');
+                }
+            } catch (error) {
+                showHRMAlert('error', 'Connection error: ' + error.message);
+            }
+        }
+
+        function showHRMAlert(type, message) {
+            const alertDiv = document.getElementById('hrmAlert');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.classList.remove('hidden');
+            setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+        }
+
+        async function updateWRStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/waterrower/status`);
+                const data = await response.json();
+                const wrStatus = document.getElementById('wrStatus');
+                const btnConnect = document.getElementById('btnConnectWR');
+                const btnDisconnect = document.getElementById('btnDisconnectWR');
+                if (data.connected) {
+                    wrStatus.textContent = `Connected${data.deviceName ? ' (' + data.deviceName + ')' : ''}`;
+                    wrStatus.className = 'state-indicator state-active';
+                    btnConnect.classList.add('hidden');
+                    btnDisconnect.classList.remove('hidden');
+                } else {
+                    wrStatus.textContent = 'Disconnected';
+                    wrStatus.className = 'state-indicator state-idle';
+                    btnConnect.classList.remove('hidden');
+                    btnDisconnect.classList.add('hidden');
+                }
+            } catch (error) {
+                document.getElementById('wrStatus').textContent = 'Error';
+            }
+        }
+
+        // Poll WaterRower status every 3s
+        setInterval(updateWRStatus, 3000);
+
+        async function connectWR() {
+            try {
+                const btnConnect = document.getElementById('btnConnectWR');
+                btnConnect.disabled = true;
+                btnConnect.textContent = 'Connecting...';
+                const response = await fetch(`${API_BASE}/waterrower/connect`, { method: 'POST' });
+                const data = await response.json();
+                btnConnect.disabled = false;
+                btnConnect.textContent = 'Connect';
+                if (data.success) {
+                    showWRAlert('success', 'Connected to WaterRower!');
+                    updateWRStatus();
+                } else {
+                    showWRAlert('error', data.error || 'Failed to connect');
+                }
+            } catch (error) {
+                showWRAlert('error', 'Connection error: ' + error.message);
+                document.getElementById('btnConnectWR').disabled = false;
+                document.getElementById('btnConnectWR').textContent = 'Connect';
+            }
+        }
+
+        async function disconnectWR() {
+            try {
+                const btnDisconnect = document.getElementById('btnDisconnectWR');
+                btnDisconnect.disabled = true;
+                btnDisconnect.textContent = 'Disconnecting...';
+                const response = await fetch(`${API_BASE}/waterrower/disconnect`, { method: 'POST' });
+                const data = await response.json();
+                btnDisconnect.disabled = false;
+                btnDisconnect.textContent = 'Disconnect';
+                if (data.success) {
+                    showWRAlert('success', 'Disconnected from WaterRower.');
+                    updateWRStatus();
+                } else {
+                    showWRAlert('error', data.error || 'Failed to disconnect');
+                }
+            } catch (error) {
+                showWRAlert('error', 'Disconnect error: ' + error.message);
+                document.getElementById('btnDisconnectWR').disabled = false;
+                document.getElementById('btnDisconnectWR').textContent = 'Disconnect';
+            }
+        }
+
+        function showWRAlert(type, message) {
+            const alertDiv = document.getElementById('wrAlert');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.classList.remove('hidden');
             setTimeout(() => alertDiv.classList.add('hidden'), 5000);
         }
     </script>

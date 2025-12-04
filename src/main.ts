@@ -88,7 +88,7 @@ function startBLE(waterrower: WaterRower): void {
 function createWaterRower(): WaterRower {
   return new WaterRower(options => {
     options.datapoints = ['stroke_rate', 'kcal_watts', 'strokes_cnt', 'm_s_total', 'total_kcal', 'ms_average'];
-    options.portName = process.env.WATERROWER_PORT || null;
+    options.portName = process.env.WATERROWER_PORT || '';
     options.refreshRate = 1000;
   });
 }
@@ -124,6 +124,8 @@ function startWebServer(): void {
 
   // Initialize heart rate monitor (optional)
   const heartRateMonitor = new HeartRateMonitor();
+  const waterRower = createWaterRower();
+  waterRower.connectSerial();
 
   // Optional: Load Garmin credentials from environment variables
   const garminCredentials = process.env.GARMIN_EMAIL && process.env.GARMIN_PASSWORD ? {
@@ -138,7 +140,7 @@ function startWebServer(): void {
   // Create and start web server
   const webServer = new WebServer({
     port: parseInt(process.env.PORT || '3000'),
-    waterRower: createWaterRower(),
+    waterRower: waterRower,
     heartRateMonitor,
     garminCredentials,
     fitFilesDirectory: './data/fit-files'
