@@ -15,6 +15,7 @@ import debug from 'debug';
 const logger = debug('WR_SERIAL');
 
 export class WaterRower extends events.EventEmitter {
+
     private recordingSubscription: Subscription | null = null;
     private options: WaterRowerOptions = DEFAULT_WATER_ROWER_OPTIONS;
     private serialPort: SerialPort | null = null;
@@ -52,6 +53,10 @@ export class WaterRower extends events.EventEmitter {
             logger(`Setting up serial port on ${this.options.portName} ...`);
             this.setupSerialPort(this.options);
         }
+    }
+
+    public isConnected(): boolean {
+        return this.serialPort != null && this.serialPort.isOpen;
     }
 
     private discoverPort(callback: (name?: string) => void): void {

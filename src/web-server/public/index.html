@@ -347,7 +347,6 @@
                 </div>
                 <div class="controls" style="margin-bottom: 10px;">
                     <button id="btnConnectWR" class="btn-start" onclick="connectWR()">Connect</button>
-                    <button id="btnDisconnectWR" class="btn-stop hidden" onclick="disconnectWR()">Disconnect</button>
                 </div>
                 <div id="wrAlert" class="hidden"></div>
             </div>
@@ -736,9 +735,8 @@
                 const data = await response.json();
                 const wrStatus = document.getElementById('wrStatus');
                 const btnConnect = document.getElementById('btnConnectWR');
-                const btnDisconnect = document.getElementById('btnDisconnectWR');
                 if (data.connected) {
-                    wrStatus.textContent = `Connected${data.deviceName ? ' (' + data.deviceName + ')' : ''}`;
+                    wrStatus.textContent = 'Connected';
                     wrStatus.className = 'state-indicator state-active';
                     btnConnect.classList.add('hidden');
                     btnDisconnect.classList.remove('hidden');
@@ -775,28 +773,6 @@
                 showWRAlert('error', 'Connection error: ' + error.message);
                 document.getElementById('btnConnectWR').disabled = false;
                 document.getElementById('btnConnectWR').textContent = 'Connect';
-            }
-        }
-
-        async function disconnectWR() {
-            try {
-                const btnDisconnect = document.getElementById('btnDisconnectWR');
-                btnDisconnect.disabled = true;
-                btnDisconnect.textContent = 'Disconnecting...';
-                const response = await fetch(`${API_BASE}/waterrower/disconnect`, { method: 'POST' });
-                const data = await response.json();
-                btnDisconnect.disabled = false;
-                btnDisconnect.textContent = 'Disconnect';
-                if (data.success) {
-                    showWRAlert('success', 'Disconnected from WaterRower.');
-                    updateWRStatus();
-                } else {
-                    showWRAlert('error', data.error || 'Failed to disconnect');
-                }
-            } catch (error) {
-                showWRAlert('error', 'Disconnect error: ' + error.message);
-                document.getElementById('btnDisconnectWR').disabled = false;
-                document.getElementById('btnDisconnectWR').textContent = 'Disconnect';
             }
         }
 

@@ -1,24 +1,24 @@
 import cors from 'cors';
 import debug from 'debug';
 import express, {
-  Request,
-  Response,
+    Request,
+    Response,
 } from 'express';
 import {
-  existsSync,
-  mkdirSync,
+    existsSync,
+    mkdirSync,
 } from 'fs';
 import path from 'path';
 
 import { HeartRateMonitor } from '../ble/heart-rate-monitor';
 import { FitFileGenerator } from '../fit/fit-file-generator';
 import {
-  GarminCredentials,
-  GarminUploader,
+    GarminCredentials,
+    GarminUploader,
 } from '../garmin/garmin-uploader';
 import {
-  SessionState,
-  TrainingSession,
+    SessionState,
+    TrainingSession,
 } from '../training/training-session';
 import { WaterRower } from '../waterrower-serial/waterrower-serial';
 
@@ -27,16 +27,16 @@ const logger = debug('WEB_SERVER');
 export interface WebServerOptions {
     port: number;
     waterRower: WaterRower;
-    heartRateMonitor?: HeartRateMonitor;
-    garminCredentials?: GarminCredentials;
-    fitFilesDirectory?: string;
+    heartRateMonitor: HeartRateMonitor;
+    garminCredentials: GarminCredentials;
+    fitFilesDirectory: string;
 }
 
 export class WebServer {
     private app: express.Application;
     private waterRower: WaterRower;
-    private heartRateMonitor?: HeartRateMonitor;
-    private currentSession?: TrainingSession;
+    private heartRateMonitor: HeartRateMonitor;
+    private currentSession: TrainingSession | null;
     private fitGenerator: FitFileGenerator;
     private garminUploader: GarminUploader;
     private garminCredentials?: GarminCredentials;
@@ -48,7 +48,8 @@ export class WebServer {
         this.waterRower = options.waterRower;
         this.heartRateMonitor = options.heartRateMonitor;
         this.garminCredentials = options.garminCredentials;
-        this.fitFilesDirectory = options.fitFilesDirectory ?? './data/fit-files';
+        this.fitFilesDirectory = options.fitFilesDirectory;
+        this.currentSession = null;
         this.fitGenerator = new FitFileGenerator();
         this.garminUploader = new GarminUploader();
 
@@ -130,6 +131,83 @@ export class WebServer {
                 configured: !!this.garminCredentials,
                 authenticated: this.garminUploader.isLoggedIn()
             });
+        });
+
+        // Heart Rate Monitor (HRM) endpoints used by the web UI
+        this.app.get('/api/hrm/status', (req, res) => {
+            try {
+                const connected = this.heartRateMonitor.isConnected() ?? false;
+                const deviceName = (this.heartRateMonitor && typeof (this.heartRateMonitor as any).getDeviceName === 'function')
+                    ? (this.heartRateMonitor as any).getDeviceName()
+                    : undefined;
+                res.json({ connected, deviceName });
+            } catch (error: any) {
+                res.status(500).json({ error: error.message || 'Failed to get HRM status' });
+            }
+        });
+
+        this.app.get('/api/hrm/discover', async (req, res) => {
+            try {
+                if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).discoverDevices === 'function') {
+                    const devices = await (this.heartRateMonitor as any).discoverDevices();
+                    res.json({ devices });
+                } else {
+                    res.json({ devices: [] });
+                }
+            } catch (error: any) {
+                res.status(500).json({ error: error.message || 'Discovery failed' });
+            }
+        });
+
+        this.app.post('/api/hrm/connect', async (req, res) => {
+            try {
+                const { deviceId } = req.body || {};
+                if (!deviceId) {
+                    res.status(400).json({ success: false, error: 'deviceId required' });
+                    return;
+                }
+
+                if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).connect === 'function') {
+                    await (this.heartRateMonitor as any).connect(deviceId);
+                    res.json({ success: true });
+                } else {
+                    res.status(500).json({ success: false, error: 'HRM not available' });
+                }
+            } catch (error: any) {
+                res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
+            }
+        });
+
+        this.app.post('/api/hrm/disconnect', (req, res) => {
+            try {
+                if (this.heartRateMonitor && typeof (this.heartRateMonitor as any).disconnect === 'function') {
+                    (this.heartRateMonitor as any).disconnect();
+                    res.json({ success: true });
+                } else {
+                    res.status(500).json({ success: false, error: 'HRM not available' });
+                }
+            } catch (error: any) {
+                res.status(500).json({ success: false, error: error.message || 'Failed to disconnect' });
+            }
+        });
+
+        // WaterRower connection endpoints used by the web UI
+        this.app.get('/api/waterrower/status', (req, res) => {
+            try {
+                const connected = this.waterRower.isConnected();
+                res.json({ connected });
+            } catch (error: any) {
+                res.status(500).json({ error: error.message || 'Failed to get WaterRower status' });
+            }
+        });
+
+        this.app.post('/api/waterrower/connect', async (req, res) => {
+            try {
+                this.waterRower.connectSerial();
+                res.json({ success: this.waterRower.isConnected() });
+            } catch (error: any) {
+                res.status(500).json({ success: false, error: error.message || 'Failed to connect' });
+            }
         });
 
         // Serve the web UI

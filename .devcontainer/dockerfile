@@ -3,4 +3,5 @@ FROM mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye
 # install bluez related packages
 RUN apt-get update && apt-get install -y \
     bluez \
-    dbus
+    dbus \
+    bluez-tools
