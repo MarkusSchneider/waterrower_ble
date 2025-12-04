@@ -6,6 +6,8 @@ import * as path from 'path';
 const logger = debug('CONFIG_MANAGER');
 
 export interface AppConfig {
+    port: number;
+    fitFilesDirectory: string;
     garminCredentials?: {
         email: string;
         password: string;
@@ -18,6 +20,8 @@ export interface AppConfig {
 }
 
 const DEFAULT_CONFIG: AppConfig = {
+    port: 3000,
+    fitFilesDirectory: './data/fit-files',
     garminCredentials: undefined,
     hrmDevice: undefined,
     waterRowerPort: undefined,
@@ -107,6 +111,26 @@ export class ConfigManager {
         this.config.waterRowerPort = undefined;
         this.saveConfig();
         logger('WaterRower port cleared');
+    }
+
+    public getPort(): number {
+        return this.config.port;
+    }
+
+    public setPort(port: number): void {
+        this.config.port = port;
+        this.saveConfig();
+        logger(`Port saved: ${port}`);
+    }
+
+    public getFitFilesDirectory(): string {
+        return this.config.fitFilesDirectory;
+    }
+
+    public setFitFilesDirectory(directory: string): void {
+        this.config.fitFilesDirectory = directory;
+        this.saveConfig();
+        logger(`FIT files directory saved: ${directory}`);
     }
 
     public getConfig(): AppConfig {

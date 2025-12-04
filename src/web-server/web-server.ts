@@ -26,11 +26,8 @@ import { ConfigManager } from '../helper/config-manager';
 const logger = debug('WEB_SERVER');
 
 export interface WebServerOptions {
-    port: number;
     waterRower: WaterRower;
     heartRateMonitor: HeartRateMonitor;
-    garminCredentials: GarminCredentials;
-    fitFilesDirectory: string;
     configManager: ConfigManager;
 }
 
@@ -41,8 +38,6 @@ export class WebServer {
     private currentSession: TrainingSession | null;
     private fitGenerator: FitFileGenerator;
     private garminUploader: GarminUploader;
-    private garminCredentials?: GarminCredentials;
-    private fitFilesDirectory: string;
     private sessionHistory: any[] = [];
     private configManager: ConfigManager;
 
@@ -50,17 +45,10 @@ export class WebServer {
         this.app = express();
         this.waterRower = options.waterRower;
         this.heartRateMonitor = options.heartRateMonitor;
-        this.garminCredentials = options.garminCredentials;
-        this.fitFilesDirectory = options.fitFilesDirectory;
         this.configManager = options.configManager;
         this.currentSession = null;
-        this.fitGenerator = new FitFileGenerator();
         this.garminUploader = new GarminUploader();
-
-        // Ensure FIT files directory exists
-        if (!existsSync(this.fitFilesDirectory)) {
-            mkdirSync(this.fitFilesDirectory, { recursive: true });
-        }
+        this.fitGenerator = new FitFileGenerator(options.configManager);
 
         this.setupMiddleware();
         this.setupRoutes();
@@ -110,7 +98,12 @@ export class WebServer {
         this.app.post('/api/garmin/upload/:sessionId', async (req, res) => { await this.handleUploadToGarmin(req, res); });
 
         // Check Garmin status
-        this.app.get('/api/garmin/status', (req, res) => { res.json({ configured: !!this.garminCredentials, authenticated: this.garminUploader.isLoggedIn() }); });
+        this.app.get('/api/garmin/status', (req, res) => {
+            res.json({
+                configured: !!this.configManager.getGarminCredentials(),
+                authenticated: this.garminUploader.isLoggedIn()
+            });
+        });
 
         // Heart Rate Monitor (HRM) endpoints used by the web UI - delegate to handlers
         this.app.get('/api/hrm/status', (req, res) => { this.handleGetHRMStatus(req, res); });
@@ -124,9 +117,7 @@ export class WebServer {
         this.app.post('/api/waterrower/disconnect', (req, res) => { this.handleDisconnectWaterRower(req, res); });
 
         // Serve the web UI
-        this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, 'public', 'index.html'));
-        });
+        this.app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
     }
 
     private handleGetStatus(req: Request, res: Response): void {
@@ -205,36 +196,31 @@ export class WebServer {
             const summary = this.currentSession.getSummary();
 
             // Generate FIT file
-            const fitFilePath = path.join(
-                this.fitFilesDirectory,
-                `${summary.id}.fit`
-            );
 
             const fitBuffer = this.fitGenerator.generateFitFile(
                 summary,
                 dataPoints,
-                { outputPath: fitFilePath }
             );
 
-            // Store session in history
-            this.sessionHistory.push({
-                ...summary,
-                fitFilePath,
-                uploadedToGarmin: false
-            });
+            // // Store session in history
+            // this.sessionHistory.push({
+            //     ...summary,
+            //     fitFilePath,
+            //     uploadedToGarmin: false
+            // });
 
             const response: any = {
                 success: true,
                 summary,
-                fitFile: fitFilePath,
                 dataPoints: dataPoints.length
             };
 
             // Auto-upload to Garmin if configured
-            if (this.garminCredentials && req.body.autoUpload !== false) {
+            const garminCredentials = this.configManager.getGarminCredentials();
+            if (garminCredentials && req.body.autoUpload !== false) {
                 try {
                     if (!this.garminUploader.isLoggedIn()) {
-                        await this.garminUploader.login(this.garminCredentials);
+                        await this.garminUploader.login(garminCredentials);
                     }
 
                     const uploadResult = await this.garminUploader.uploadActivityFromBuffer(
@@ -321,13 +307,13 @@ export class WebServer {
                 return;
             }
 
-            this.garminCredentials = { email, password };
+            const garminCredentials = { email, password };
 
             // Save to config
             this.configManager.setGarminCredentials(email, password);
 
             // Test login
-            await this.garminUploader.login(this.garminCredentials);
+            await this.garminUploader.login(garminCredentials);
 
             res.json({
                 success: true,
@@ -344,8 +330,9 @@ export class WebServer {
     private async handleUploadToGarmin(req: Request, res: Response): Promise<void> {
         try {
             const { sessionId } = req.params;
+            const garminCredentials = this.configManager.getGarminCredentials();
 
-            if (!this.garminCredentials) {
+            if (!garminCredentials) {
                 res.status(400).json({
                     error: 'Garmin Connect not configured. Please configure credentials first.'
                 });
@@ -359,7 +346,7 @@ export class WebServer {
             }
 
             if (!this.garminUploader.isLoggedIn()) {
-                await this.garminUploader.login(this.garminCredentials);
+                await this.garminUploader.login(garminCredentials);
             }
 
             const uploadResult = await this.garminUploader.uploadActivity(session.fitFilePath);
@@ -447,7 +434,7 @@ export class WebServer {
             if (this.waterRower && typeof (this.waterRower as any).connectSerial === 'function') {
                 await (this.waterRower as any).connectSerial();
                 const success = this.waterRower.isConnected ? this.waterRower.isConnected() : true;
-                
+
                 // Save the port to config if connected
                 if (success) {
                     const port = (this.waterRower as any).getPortName?.();
@@ -456,12 +443,12 @@ export class WebServer {
                         logger(`WaterRower port saved to config: ${port}`);
                     }
                 }
-                
+
                 res.json({ success });
             } else if (this.waterRower && typeof (this.waterRower as any).connect === 'function') {
                 await (this.waterRower as any).connect();
                 const success = this.waterRower.isConnected ? this.waterRower.isConnected() : true;
-                
+
                 // Save the port to config if connected
                 if (success) {
                     const port = (this.waterRower as any).getPortName?.();
@@ -470,7 +457,7 @@ export class WebServer {
                         logger(`WaterRower port saved to config: ${port}`);
                     }
                 }
-                
+
                 res.json({ success });
             } else {
                 res.status(500).json({ success: false, error: 'WaterRower not available' });
@@ -494,11 +481,12 @@ export class WebServer {
     }
 
     public start(): void {
-        this.app.listen(this.options.port, () => {
-            logger(`Web server running on http://localhost:${this.options.port}`);
+        const port = this.configManager.getPort();
+        this.app.listen(port, () => {
+            logger(`Web server running on http://localhost:${port}`);
             console.log(`\n🚣 WaterRower Training Server`);
-            console.log(`📡 Web interface: http://localhost:${this.options.port}`);
-            console.log(`🔌 API endpoint: http://localhost:${this.options.port}/api`);
+            console.log(`📡 Web interface: http://localhost:${port}`);
+            console.log(`🔌 API endpoint: http://localhost:${port}/api`);
             console.log(`\n`);
         });
     }

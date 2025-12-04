@@ -6,20 +6,15 @@ import {
     SessionSummary,
     TrainingDataPoint,
 } from '../training/training-session';
+import { ConfigManager } from '../helper/config-manager';
 
 const logger = debug('FIT_GENERATOR');
 
-export interface FitFileOptions {
-    outputPath: string;
-    manufacturer?: string;
-    product?: string;
-    serialNumber?: number;
-}
-
+const SERIAL_NUMBER = 123456; // Default serial number if not provided
 export class FitFileGenerator {
     private easyFit: EasyFit;
 
-    constructor() {
+    constructor(private configManager: ConfigManager) {
         this.easyFit = new EasyFit({
             force: true,
             speedUnit: 'km/h',
@@ -37,7 +32,6 @@ export class FitFileGenerator {
     public generateFitFile(
         summary: SessionSummary,
         dataPoints: TrainingDataPoint[],
-        options: FitFileOptions
     ): Buffer {
         logger('Generating FIT file...');
 
@@ -47,7 +41,7 @@ export class FitFileGenerator {
                 manufacturer: 'concept2', // Use Concept2 for rowing compatibility
                 product: 20, // Concept2 PM5 product ID
                 time_created: this.toFitTimestamp(summary.startTime),
-                serial_number: options.serialNumber ?? 123456,
+                serial_number: SERIAL_NUMBER,
             },
             file_creator: {
                 software_version: 100,
@@ -107,7 +101,7 @@ export class FitFileGenerator {
                     timestamp: this.toFitTimestamp(summary.startTime),
                     manufacturer: 'concept2',
                     product: 20, // PM5
-                    serial_number: options.serialNumber ?? 123456,
+                    serial_number: SERIAL_NUMBER,
                     device_index: 0,
                     source_type: 'local',
                 }
@@ -118,8 +112,9 @@ export class FitFileGenerator {
         const buffer = Buffer.from(this.easyFit.encode(fitData));
 
         // Save to file
-        writeFileSync(options.outputPath, buffer, { encoding: 'utf-8' });
-        logger(`FIT file saved to: ${options.outputPath}`);
+        const outputPath = this.configManager.getFitFilesDirectory()
+        writeFileSync(outputPath, buffer, { encoding: 'utf-8' });
+        logger(`FIT file saved to: ${outputPath}`);
 
         return buffer;
     }

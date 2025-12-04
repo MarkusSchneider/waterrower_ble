@@ -132,16 +132,10 @@ async function startWebServer(): Promise<void> {
   const waterRower = createWaterRower(configManager.getWaterRowerPort());
   waterRower.connectSerial();
 
-  // Load Garmin credentials from config
-  const garminCredentials = configManager.getGarminCredentials();
-
-  // Create and start web server
+  // Create and start web server using config values
   const webServer = new WebServer({
-    port: parseInt(process.env.PORT || '3000'),
     waterRower: waterRower,
     heartRateMonitor,
-    garminCredentials: garminCredentials || { email: '', password: '' },
-    fitFilesDirectory: './data/fit-files',
     configManager
   });
 
