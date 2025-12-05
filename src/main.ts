@@ -140,7 +140,9 @@ async function startWebServer(): Promise<void> {
 
   const savedHRMDevice = configManager.getHRMDevice();
   waterRower.connectSerial();
-  heartRateMonitor.connect(savedHRMDevice?.id, 10000);
+  heartRateMonitor
+    .connect(savedHRMDevice?.id, 10000)
+    .catch(err => logger(`Failed to connect to heart rate monitor: ${err.message}`));
 }
 
 try {

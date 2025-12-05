@@ -1,0 +1,24 @@
+[Unit]
+Description=WaterRower Training System
+Documentation=https://github.com/MarkusSchneider/waterrower_ble
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/waterrower_ble
+Environment="NODE_ENV=production"
+Environment="DEBUG=*"
+ExecStart=/usr/bin/node /root/waterrower_ble/dist/main.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=waterrower
+
+# Security settings (optional, adjust as needed)
+# PrivateTmp=true
+# NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
