@@ -28,7 +28,7 @@ const MANUFACTURER = FitManufacturer.WATERROWER;
 const PRODUCT = Concept2Product.PM5;
 const SERIAL_NUMBER = 123456; // Default serial number if not provided
 const SOURCE_TYPE = FitSourceType.LOCAL;
-const SPORT = FitSport.ROWING;
+const SPORT = FitSport.PADDLING;
 const SUB_SPORT = FitSubSport.INDOOR_ROWING;
 
 export class FitFileGenerator {
