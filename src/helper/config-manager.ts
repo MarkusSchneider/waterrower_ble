@@ -17,6 +17,12 @@ export interface AppConfig {
         name: string;
     };
     waterRowerPort?: string;
+    ssl?: {
+        enabled: boolean;
+        keyPath: string;
+        certPath: string;
+        port: number;
+    };
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -25,6 +31,12 @@ const DEFAULT_CONFIG: AppConfig = {
     garminCredentials: undefined,
     hrmDevice: undefined,
     waterRowerPort: undefined,
+    ssl: {
+        enabled: false,
+        keyPath: './data/certs/privkey.pem',
+        certPath: './data/certs/fullchain.pem',
+        port: 3443
+    }
 };
 
 export class ConfigManager {
@@ -135,6 +147,21 @@ export class ConfigManager {
 
     public getConfig(): AppConfig {
         return { ...this.config };
+    }
+
+    public getSSLConfig(): AppConfig['ssl'] {
+        return this.config.ssl;
+    }
+
+    public setSSLConfig(enabled: boolean, keyPath?: string, certPath?: string, port?: number): void {
+        this.config.ssl = {
+            enabled,
+            keyPath: keyPath || this.config.ssl?.keyPath || DEFAULT_CONFIG.ssl!.keyPath,
+            certPath: certPath || this.config.ssl?.certPath || DEFAULT_CONFIG.ssl!.certPath,
+            port: port || this.config.ssl?.port || DEFAULT_CONFIG.ssl!.port
+        };
+        this.saveConfig();
+        logger(`SSL config updated: enabled=${enabled}`);
     }
 
     public clearAllConfig(): void {

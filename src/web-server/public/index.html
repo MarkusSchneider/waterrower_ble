@@ -583,6 +583,18 @@
                     Status: <span id="garminStatus">Not configured</span>
                 </p>
             </div>
+
+            <!-- FIT Files Download -->
+            <div class="card">
+                <h2>📁 Saved FIT Files</h2>
+                <div id="fitFilesAlert" class="hidden"></div>
+                <div id="fitFilesList" style="max-height: 300px; overflow-y: auto;">
+                    <p style="text-align: center; color: #666;">Loading...</p>
+                </div>
+                <button class="btn-secondary" onclick="refreshFitFiles()" style="width: 100%; margin-top: 10px;">
+                    🔄 Refresh List
+                </button>
+            </div>
         </div>
     </div>
 
@@ -686,6 +698,11 @@
             const overlay = document.getElementById('configOverlay');
             menu.classList.toggle('open');
             overlay.classList.toggle('show');
+
+            // Load FIT files when menu opens
+            if (menu.classList.contains('open')) {
+                refreshFitFiles();
+            }
         }
 
         // Setup real-time WebSocket listeners
@@ -1116,6 +1133,55 @@
 
         function showWRAlert(type, message) {
             const alertDiv = document.getElementById('wrAlert');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.classList.remove('hidden');
+            setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+        }
+
+        // FIT Files functions
+        async function refreshFitFiles() {
+            try {
+                const response = await fetch(`${API_BASE}/fit-files`);
+                const data = await response.json();
+
+                const listDiv = document.getElementById('fitFilesList');
+
+                if (!data.files || data.files.length === 0) {
+                    listDiv.innerHTML = '<p style="text-align: center; color: #666;">No FIT files found</p>';
+                    return;
+                }
+
+                listDiv.innerHTML = data.files.map(file => {
+                    const date = new Date(file.created);
+                    const dateStr = date.toLocaleString();
+                    const sizeKB = (file.size / 1024).toFixed(1);
+
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #e5e7eb;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500; color: #333;">${file.filename}</div>
+                                <div style="font-size: 0.85em; color: #666;">${dateStr} • ${sizeKB} KB</div>
+                            </div>
+                            <button class="btn-secondary" onclick="downloadFitFile('${file.filename}')" style="flex:0; padding: 6px 12px; font-size: 0.9em; min-width: 50px;">
+                                📥
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Error loading FIT files:', error);
+                showFitFilesAlert('error', 'Failed to load FIT files: ' + error.message);
+            }
+        }
+
+        function downloadFitFile(filename) {
+            window.location.href = `${API_BASE}/fit-files/${filename}`;
+        }
+
+        function showFitFilesAlert(type, message) {
+            const alertDiv = document.getElementById('fitFilesAlert');
             alertDiv.className = `alert alert-${type}`;
             alertDiv.textContent = message;
             alertDiv.classList.remove('hidden');

@@ -84,7 +84,14 @@ logger('Starting WaterRower Training System...');
 
 function createWaterRower(port?: string): WaterRower {
   return new WaterRower(options => {
-    options.datapoints = ['stroke_rate', 'kcal_watts', 'strokes_cnt', 'm_s_total', 'total_kcal', 'ms_average'];
+    // Request all datapoints needed for FIT file generation
+    options.datapoints = [
+      'stroke_rate',    // Strokes per minute (cadence)
+      'distance',       // Current session distance in meters
+      'total_kcal',     // Total calories burned
+      'strokes_cnt',    // Total stroke count
+      'm_s_average',    // Speed in cm/s (for speed and power calculation)
+    ];
     // Use saved port from config, or empty string to auto-discover
     options.portName = port || '';
     options.refreshRate = 1000;
