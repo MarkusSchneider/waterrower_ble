@@ -214,9 +214,9 @@ export class WaterRower extends EventEmitter {
             } else {
                 throw ('requestDataPoint requires a string, an array of strings, or nothing at all');
             }
-        } else
+        } else {
             DataPoints.forEach(d => req(d.name));
-
+        }
     }
 
     readDataPoints(points?: string | Array<string>): Record<string, number> | number {
