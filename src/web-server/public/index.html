@@ -248,11 +248,6 @@
             border-color: #667eea;
         }
 
-        .session-history {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
         .session-item {
             padding: 15px;
             background: #f8f9fa;
@@ -669,15 +664,6 @@
                 <button id="btnStop" class="btn-stop" onclick="stopSession()" disabled>Stop & Save</button>
             </div>
         </div>
-
-        <!-- Session History -->
-        <div class="card">
-            <h2>📊 Session History</h2>
-            <div id="sessionHistory" class="session-history">
-                <p style="color: #999; text-align: center; padding: 20px;">No sessions yet. Start your first training!
-                </p>
-            </div>
-        </div>
     </div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -688,7 +674,6 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             checkGarminStatus();
-            loadSessionHistory();
             setupSocketListeners();
         });
 
@@ -792,10 +777,14 @@
             const btnResume = document.getElementById('btnResume');
             const btnStop = document.getElementById('btnStop');
 
+            // Reset all button states first
+            btnPause.classList.remove('hidden');
+            btnResume.classList.add('hidden');
+            stateIndicator.classList.remove('recording');
+
             if (data.state === 'active') {
                 btnStart.disabled = true;
                 btnPause.disabled = false;
-                btnResume.classList.add('hidden');
                 btnStop.disabled = false;
                 stateIndicator.classList.add('recording');
             } else if (data.state === 'paused') {
@@ -803,13 +792,11 @@
                 btnPause.classList.add('hidden');
                 btnResume.classList.remove('hidden');
                 btnStop.disabled = false;
-                stateIndicator.classList.remove('recording');
-            } else if (data.state === 'idle') {
+            } else {
+                // idle, finished, or any other state
                 btnStart.disabled = false;
                 btnPause.disabled = true;
-                btnResume.classList.add('hidden');
                 btnStop.disabled = true;
-                stateIndicator.classList.remove('recording');
             }
 
             if (data.session) {
@@ -865,7 +852,6 @@
                         message += ' Uploaded to Garmin Connect!';
                     }
                     showAlert('success', message);
-                    loadSessionHistory();
                 } else {
                     showAlert('error', data.error || 'Failed to stop session');
                 }
@@ -946,37 +932,6 @@
                 document.getElementById('garminStatus').textContent = statusText;
             } catch (error) {
                 console.error('Error checking Garmin status:', error);
-            }
-        }
-
-        async function loadSessionHistory() {
-            try {
-                const response = await fetch(`${API_BASE}/sessions`);
-                const data = await response.json();
-
-                const historyDiv = document.getElementById('sessionHistory');
-
-                if (!data.sessions || data.sessions.length === 0) {
-                    historyDiv.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No sessions yet. Start your first training!</p>';
-                    return;
-                }
-
-                historyDiv.innerHTML = data.sessions.reverse().map(session => `
-          <div class="session-item">
-            <div class="session-info">
-              <strong>${new Date(session.startTime).toLocaleString()}</strong>
-              ${session.uploadedToGarmin ? '<span class="badge">Uploaded</span>' : ''}
-              <br>
-              <small>
-                ${Math.round(session.distance)}m • ${formatTime(session.duration)} • 
-                ${Math.round(session.totalCalories || 0)} kcal
-                ${session.avgHeartRate ? ' • ♥ ' + Math.round(session.avgHeartRate) + ' BPM' : ''}
-              </small>
-            </div>
-          </div>
-        `).join('');
-            } catch (error) {
-                console.error('Error loading history:', error);
             }
         }
 

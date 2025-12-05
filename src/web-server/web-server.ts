@@ -37,7 +37,6 @@ export class WebServer {
     private currentSession: TrainingSession | null;
     private fitGenerator: FitFileGenerator;
     private garminUploader: GarminUploader;
-    private sessionHistory: any[] = [];
     private configManager: ConfigManager;
 
     constructor(private options: WebServerOptions) {
@@ -166,9 +165,6 @@ export class WebServer {
 
         // Resume training session
         this.app.post('/api/session/resume', (req, res) => { this.handleResumeSession(req, res); });
-
-        // Get session history
-        this.app.get('/api/sessions', (req, res) => { res.json({ sessions: this.sessionHistory }); });
 
         // Configure Garmin credentials
         this.app.post('/api/garmin/configure', async (req, res) => { await this.handleConfigureGarmin(req, res); });
@@ -310,14 +306,7 @@ export class WebServer {
                 dataPoints,
             );
 
-            // // Store session in history
-            // this.sessionHistory.push({
-            //     ...summary,
-            //     fitFilePath,
-            //     uploadedToGarmin: false
-            // });
-
-            const response: any = {
+            const response = {
                 success: true,
                 summary,
                 dataPoints: dataPoints.length
@@ -333,20 +322,9 @@ export class WebServer {
 
                     const uploadResult = await this.garminUploader.uploadActivity(fitFilePath);
 
-                    response.garminUpload = uploadResult;
-
-                    if (uploadResult.success) {
-                        // Update history
-                        const historyEntry = this.sessionHistory[this.sessionHistory.length - 1];
-                        historyEntry.uploadedToGarmin = true;
-                        historyEntry.garminActivityId = uploadResult.activityId;
-                    }
                 } catch (error: any) {
                     logger('Auto-upload to Garmin failed:', error);
-                    response.garminUpload = {
-                        success: false,
-                        error: error.message
-                    };
+                    response.success = false;
                 }
             }
 

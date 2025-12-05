@@ -10,6 +10,24 @@ export interface GarminCredentials {
     password: string;
 }
 
+export interface GarminUploadResponse {
+    detailedImportResult: {
+        uploadId: number;
+        uploadUuid: {
+            uuid: string;
+        };
+        owner: number;
+        fileSize: number;
+        processingTime: number;
+        creationDate: string;
+        ipAddress: string;
+        fileName: string;
+        report: any;
+        successes: any[];
+        failures: any[];
+    };
+}
+
 export interface UploadResult {
     success: boolean;
     activityId?: number;
@@ -62,13 +80,13 @@ export class GarminUploader {
         try {
             logger(`Uploading FIT file from: ${fitFilePath}`);
 
-            const result: any = await this.garminClient.uploadActivity(fitFilePath, 'fit');
+            const result = await this.garminClient.uploadActivity(fitFilePath, 'fit') as GarminUploadResponse;
 
-            logger(`Upload successful. Activity ID: ${result?.activityId}`);
+            logger(`Upload successful. Upload ID: ${result.detailedImportResult.uploadId}`);
 
             return {
                 success: true,
-                activityId: result?.activityId
+                activityId: result.detailedImportResult.uploadId
             };
         } catch (error: any) {
             logger('Upload failed:', error);
