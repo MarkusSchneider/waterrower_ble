@@ -24,9 +24,9 @@
   "dependencies": {
     "@abandonware/bleno": "0.6.2",
     "@abandonware/noble": "1.9.2-26",
+    "@markw65/fit-file-writer": "^0.1.7",
     "cors": "2.8.5",
     "debug": "4.4.3",
-    "easy-fit": "0.0.8",
     "express": "5.1.0",
     "garmin-connect": "1.6.2",
     "rxjs": "7.8.2",
@@ -34,10 +34,10 @@
     "socket.io": "4.7.2"
   },
   "devDependencies": {
-    "@types/cors": "2.8.19",
-    "@types/express": "5.0.5",
     "@stylistic/eslint-plugin-ts": "4.4.1",
+    "@types/cors": "2.8.19",
     "@types/debug": "4.1.12",
+    "@types/express": "5.0.5",
     "@types/jasmine": "5.1.13",
     "@types/node": "24.10.1",
     "@typescript-eslint/eslint-plugin": "8.48.0",

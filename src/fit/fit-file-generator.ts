@@ -1,6 +1,6 @@
 import debug from 'debug';
-import EasyFit, { FitFileData } from 'easy-fit';
 import { writeFileSync } from 'fs';
+import { Builder, Decoder } from '@markw65/fit-file-writer';
 
 import {
     SessionSummary,
@@ -11,19 +11,10 @@ import { ConfigManager } from '../helper/config-manager';
 const logger = debug('FIT_GENERATOR');
 
 const SERIAL_NUMBER = 123456; // Default serial number if not provided
-export class FitFileGenerator {
-    private easyFit: EasyFit;
+const FIT_EPOCH = new Date('1989-12-31T00:00:00Z').getTime();
 
-    constructor(private configManager: ConfigManager) {
-        this.easyFit = new EasyFit({
-            force: true,
-            speedUnit: 'km/h',
-            lengthUnit: 'm',
-            temperatureUnit: 'celsius',
-            elapsedRecordField: true,
-            mode: 'cascade',
-        });
-    }
+export class FitFileGenerator {
+    constructor(private configManager: ConfigManager) { }
 
     /**
      * Generate a FIT file from training session data
@@ -35,114 +26,125 @@ export class FitFileGenerator {
     ): Buffer {
         logger('Generating FIT file...');
 
-        const fitData: FitFileData = {
-            file_id: {
-                type: 'activity',
-                manufacturer: 'concept2', // Use Concept2 for rowing compatibility
-                product: 20, // Concept2 PM5 product ID
-                time_created: this.toFitTimestamp(summary.startTime),
-                serial_number: SERIAL_NUMBER,
-            },
-            file_creator: {
-                software_version: 100,
-            },
-            activity: {
-                timestamp: this.toFitTimestamp(summary.endTime ?? summary.startTime),
-                total_timer_time: summary.duration * 1000, // milliseconds
-                num_sessions: 1,
-                type: 'manual',
-                event: 'activity',
-                event_type: 'stop',
-            },
-            session: {
-                timestamp: this.toFitTimestamp(summary.endTime ?? summary.startTime),
-                start_time: this.toFitTimestamp(summary.startTime),
-                total_elapsed_time: summary.duration * 1000, // milliseconds
-                total_timer_time: summary.duration * 1000,
-                total_distance: summary.distance,
-                total_calories: Math.round(summary.totalCalories ?? 0),
-                avg_heart_rate: summary.avgHeartRate ? Math.round(summary.avgHeartRate) : undefined,
-                max_heart_rate: summary.maxHeartRate ? Math.round(summary.maxHeartRate) : undefined,
-                avg_power: summary.avgPower ? Math.round(summary.avgPower) : undefined,
-                max_power: summary.maxPower ? Math.round(summary.maxPower) : undefined,
-                total_strokes: summary.totalStrokes,
-                sport: 'rowing', // Rowing sport type
-                sub_sport: 'indoor_rowing',
-                first_lap_index: 0,
-                num_laps: 1,
-                event: 'session',
-                event_type: 'stop',
-                trigger: 'activity_end',
-            },
-            lap: {
-                timestamp: this.toFitTimestamp(summary.endTime ?? summary.startTime),
-                start_time: this.toFitTimestamp(summary.startTime),
-                total_elapsed_time: summary.duration * 1000,
-                total_timer_time: summary.duration * 1000,
-                total_distance: summary.distance,
-                total_calories: Math.round(summary.totalCalories ?? 0),
-                avg_heart_rate: summary.avgHeartRate ? Math.round(summary.avgHeartRate) : undefined,
-                max_heart_rate: summary.maxHeartRate ? Math.round(summary.maxHeartRate) : undefined,
-                avg_power: summary.avgPower ? Math.round(summary.avgPower) : undefined,
-                max_power: summary.maxPower ? Math.round(summary.maxPower) : undefined,
-                total_strokes: summary.totalStrokes,
-                avg_stroke_distance: summary.totalStrokes && summary.distance
-                    ? summary.distance / summary.totalStrokes
-                    : undefined,
-                sport: 'rowing',
-                sub_sport: 'indoor_rowing',
-                lap_trigger: 'session_end',
-                event: 'lap',
-                event_type: 'stop',
-            },
-            record: this.generateRecords(dataPoints, summary.startTime),
-            device_info: [
-                {
-                    timestamp: this.toFitTimestamp(summary.startTime),
-                    manufacturer: 'concept2',
-                    product: 20, // PM5
-                    serial_number: SERIAL_NUMBER,
-                    device_index: 0,
-                    source_type: 'local',
-                }
-            ],
-        };
+        const builder = new Builder();
+        const timestamp = this.toFitTimestamp(summary.startTime);
+        const endTimestamp = this.toFitTimestamp(summary.endTime ?? summary.startTime);
 
-        // Encode to FIT format
-        const buffer = Buffer.from(this.easyFit.encode(fitData));
+        // File ID message
+        builder.addMessage(0, 'file_id', {
+            type: 4, // activity
+            manufacturer: 17, // concept2
+            product: 20, // Concept2 PM5 product ID
+            time_created: timestamp,
+            serial_number: SERIAL_NUMBER,
+        });
 
-        // Save to file
-        const outputPath = this.configManager.getFitFilesDirectory()
-        writeFileSync(outputPath, buffer, { encoding: 'utf-8' });
-        logger(`FIT file saved to: ${outputPath}`);
+        // Device Info message
+        builder.addMessage(0, 'device_info', {
+            timestamp: timestamp,
+            manufacturer: 17, // concept2
+            product: 20, // PM5
+            serial_number: SERIAL_NUMBER,
+            device_index: 0,
+            source_type: 5, // local
+        });
 
-        return buffer;
-    }
+        // Sport message
+        builder.addMessage(0, 'sport', {
+            sport: 15, // rowing
+            sub_sport: 14, // indoor_rowing
+        });
 
-    private generateRecords(
-        dataPoints: TrainingDataPoint[],
-        startTime: Date
-    ): FitFileData['record'] {
-        return dataPoints.map((point) => {
-            const record: any = {
+        // Record messages (data points)
+        dataPoints.forEach((point) => {
+            const recordMessage: any = {
                 timestamp: this.toFitTimestamp(point.timestamp),
-                distance: point.distance,
-                heart_rate: point.heartRate ? Math.round(point.heartRate) : undefined,
-                power: point.power ? Math.round(point.power) : undefined,
+                distance: Math.round(point.distance * 100), // cm
                 cadence: point.strokeRate, // Stroke rate as cadence
-                speed: point.speed,
-                calories: point.calories ? Math.round(point.calories) : undefined,
             };
 
-            // Remove undefined values
-            Object.keys(record).forEach(key => {
-                if (record[key] === undefined) {
-                    delete record[key];
-                }
-            });
+            if (point.heartRate) {
+                recordMessage.heart_rate = Math.round(point.heartRate);
+            }
+            if (point.power) {
+                recordMessage.power = Math.round(point.power);
+            }
+            if (point.speed) {
+                recordMessage.speed = Math.round(point.speed * 1000); // mm/s
+            }
+            if (point.calories) {
+                recordMessage.calories = Math.round(point.calories);
+            }
 
-            return record;
+            builder.addMessage(0, 'record', recordMessage);
         });
+
+        // Lap message
+        builder.addMessage(0, 'lap', {
+            timestamp: endTimestamp,
+            start_time: timestamp,
+            total_elapsed_time: summary.duration * 1000, // milliseconds
+            total_timer_time: summary.duration * 1000,
+            total_distance: Math.round(summary.distance * 100), // cm
+            total_calories: Math.round(summary.totalCalories ?? 0),
+            avg_heart_rate: summary.avgHeartRate ? Math.round(summary.avgHeartRate) : undefined,
+            max_heart_rate: summary.maxHeartRate ? Math.round(summary.maxHeartRate) : undefined,
+            avg_power: summary.avgPower ? Math.round(summary.avgPower) : undefined,
+            max_power: summary.maxPower ? Math.round(summary.maxPower) : undefined,
+            total_strokes: summary.totalStrokes,
+            avg_stroke_distance: summary.totalStrokes && summary.distance
+                ? Math.round((summary.distance / summary.totalStrokes) * 100) // cm
+                : undefined,
+            sport: 15, // rowing
+            sub_sport: 14, // indoor_rowing
+            lap_trigger: 0, // manual
+            event: 9, // lap
+            event_type: 1, // stop
+        });
+
+        // Session message
+        builder.addMessage(0, 'session', {
+            timestamp: endTimestamp,
+            start_time: timestamp,
+            total_elapsed_time: summary.duration * 1000,
+            total_timer_time: summary.duration * 1000,
+            total_distance: Math.round(summary.distance * 100), // cm
+            total_calories: Math.round(summary.totalCalories ?? 0),
+            avg_heart_rate: summary.avgHeartRate ? Math.round(summary.avgHeartRate) : undefined,
+            max_heart_rate: summary.maxHeartRate ? Math.round(summary.maxHeartRate) : undefined,
+            avg_power: summary.avgPower ? Math.round(summary.avgPower) : undefined,
+            max_power: summary.maxPower ? Math.round(summary.maxPower) : undefined,
+            total_strokes: summary.totalStrokes,
+            sport: 15, // rowing
+            sub_sport: 14, // indoor_rowing
+            first_lap_index: 0,
+            num_laps: 1,
+            event: 8, // session
+            event_type: 1, // stop
+            trigger: 0, // activity_end
+        });
+
+        // Activity message
+        builder.addMessage(0, 'activity', {
+            timestamp: endTimestamp,
+            total_timer_time: summary.duration * 1000,
+            num_sessions: 1,
+            type: 0, // manual
+            event: 26, // activity
+            event_type: 1, // stop
+        });
+
+        // Build the FIT file
+        const buffer = builder.build();
+
+        // Save to file
+        const outputPath = this.configManager.getFitFilesDirectory();
+        const fileName = `waterrower_${new Date().getTime()}.fit`;
+        const fullPath = `${outputPath}/${fileName}`;
+        writeFileSync(fullPath, buffer);
+        logger(`FIT file saved to: ${fullPath}`);
+
+        return buffer;
     }
 
     /**
@@ -150,7 +152,6 @@ export class FitFileGenerator {
      * FIT time is seconds since UTC 00:00 Dec 31 1989
      */
     private toFitTimestamp(date: Date): number {
-        const FIT_EPOCH = new Date('1989-12-31T00:00:00Z').getTime();
         return Math.floor((date.getTime() - FIT_EPOCH) / 1000);
     }
 
@@ -159,13 +160,14 @@ export class FitFileGenerator {
      */
     public parseFitFile(filePath: string): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.easyFit.parse(filePath, (error: any, data: any) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(data);
-                }
-            });
+            const decoder = new Decoder();
+            try {
+                const buffer = require('fs').readFileSync(filePath);
+                const result = decoder.decode(buffer);
+                resolve(result);
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 }

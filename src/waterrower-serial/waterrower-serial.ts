@@ -184,7 +184,6 @@ export class WaterRower extends EventEmitter {
             this.serialPort.close(err => logger(err));
             this.serialPort = null;
         }
-        process.exit();
     }
 
     /// reset console
