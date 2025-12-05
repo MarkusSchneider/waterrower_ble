@@ -27,18 +27,20 @@ export class HeartRateMonitor extends EventEmitter {
     constructor(savedDeviceId?: string) {
         super();
 
-        // Setup noble state change handler
-        noble.on('stateChange', (state) => {
-            logger(`Noble state changed to: ${state}`);
-            if (state === 'poweredOn') {
-                this.emit('ready');
-            } else {
-                if (this.scanning) {
-                    noble.stopScanning();
-                    this.scanning = false;
+        // Setup noble state change handler (only once)
+        if (noble.listenerCount('stateChange') === 0) {
+            noble.on('stateChange', (state) => {
+                logger(`Noble state changed to: ${state}`);
+                if (state === 'poweredOn') {
+                    this.emit('ready');
+                } else {
+                    if (this.scanning) {
+                        noble.stopScanning();
+                        this.scanning = false;
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // Auto-connect in background if a saved device ID is provided
         if (savedDeviceId) {
