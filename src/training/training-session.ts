@@ -1,6 +1,6 @@
 import debug from 'debug';
 import { EventEmitter } from 'events';
-import { Subscription } from 'rxjs';
+import { interval, Subscription } from 'rxjs';
 
 import { HeartRateMonitor } from '../ble/heart-rate-monitor';
 import { DataPoint } from '../waterrower-serial/data-point';
@@ -55,7 +55,10 @@ export class TrainingSession extends EventEmitter {
     private waterRowerSubscription?: Subscription;
     private heartRateSubscription?: Subscription;
 
-    private currentData: Partial<TrainingDataPoint> = {}; constructor(
+    private currentData: Partial<TrainingDataPoint> = {};
+    private intervalTimer: NodeJS.Timeout | null = null;
+
+    constructor(
         private waterRower: WaterRower,
         private heartRateMonitor: HeartRateMonitor
     ) {
@@ -88,8 +91,7 @@ export class TrainingSession extends EventEmitter {
         this.currentData = {};
 
         // Reset WaterRower
-        this.waterRower.
-            this.waterRower.reset();
+        this.waterRower.reset();
 
         // Subscribe to WaterRower data
         this.waterRowerSubscription = this.waterRower.datapoints$.subscribe({
@@ -120,7 +122,9 @@ export class TrainingSession extends EventEmitter {
         }
 
         // Start periodic data collection (every second)
-        this.scheduleDataCollection();
+        this.intervalTimer = setInterval(() => {
+            this.collectDataPoint();
+        }, 1000);
 
         this.emit('started', { sessionId: this.sessionId, startTime: this.startTime });
     }
@@ -146,7 +150,6 @@ export class TrainingSession extends EventEmitter {
             this.totalPausedTime += Date.now() - this.pauseTime.getTime();
         }
         this.state = SessionState.ACTIVE;
-        this.scheduleDataCollection();
         this.emit('resumed');
     }
 
@@ -156,13 +159,18 @@ export class TrainingSession extends EventEmitter {
         }
 
         logger('Stopping training session');
+
+        this.intervalTimer?.close();
+        this.intervalTimer = null;
+
         this.state = SessionState.FINISHED;
         this.endTime = new Date();
 
         // Cleanup subscriptions
         this.waterRowerSubscription?.unsubscribe();
+        this.waterRower.close();
         this.heartRateSubscription?.unsubscribe();
-        this.heartRateMonitor?.disconnect(); this.emit('stopped', this.getSummary());
+        this.heartRateMonitor.disconnect(); this.emit('stopped', this.getSummary());
 
         return this.dataPoints;
     }
@@ -219,17 +227,10 @@ export class TrainingSession extends EventEmitter {
         }
     }
 
-    private scheduleDataCollection(): void {
-        if (this.state !== SessionState.ACTIVE) return;
-
-        setTimeout(() => {
-            this.collectDataPoint();
-            this.scheduleDataCollection();
-        }, 1000); // Collect data every second
-    }
-
     private collectDataPoint(): void {
-        if (this.state !== SessionState.ACTIVE || !this.startTime) return;
+        if (this.state !== SessionState.ACTIVE) {
+            return;
+        }
 
         const elapsedTime = this.calculateDuration();
 

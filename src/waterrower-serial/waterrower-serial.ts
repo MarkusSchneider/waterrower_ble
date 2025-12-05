@@ -175,7 +175,7 @@ export class WaterRower extends EventEmitter {
         this.send('USB');
     }
 
-    private close(): void {
+    public close(): void {
         logger('Closing WaterRower...');
         this.send('EXIT');
         this.emit('close');
@@ -191,6 +191,7 @@ export class WaterRower extends EventEmitter {
     reset(): void {
         logger('Resetting WaterRower...');
         this.send('RESET'); //reset the waterrower 
+        this.initialize();
     }
 
     /// Issues a request for one, more, or all data points.

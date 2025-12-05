@@ -62,6 +62,41 @@ export class WebServer {
         this.setupDeviceEventListeners();
     }
 
+    private setupSessionEventListeners(session: TrainingSession): void {
+        // Subscribe to session lifecycle events
+        session.on('started', () => {
+            logger('Session started event received');
+            this.emitSessionStatus();
+        });
+
+        session.on('paused', () => {
+            logger('Session paused event received');
+            this.emitSessionStatus();
+        });
+
+        session.on('resumed', () => {
+            logger('Session resumed event received');
+            this.emitSessionStatus();
+        });
+
+        session.on('stopped', () => {
+            logger('Session stopped event received');
+            this.emitSessionStatus();
+        });
+
+        session.on('datapoint', (dataPoint) => {
+            // Emit real-time datapoint via WebSocket
+            this.io.emit('session:datapoint', dataPoint);
+            // Also emit updated summary
+            this.emitSessionStatus();
+        });
+
+        session.on('error', (error) => {
+            logger('Session error:', error);
+            this.io.emit('session:error', { error: error.message });
+        });
+    }
+
     private setupDeviceEventListeners(): void {
         // Listen to WaterRower lifecycle events
         this.waterRower.on('initialized', () => {
@@ -76,7 +111,6 @@ export class WebServer {
             if (this.currentSession && this.currentSession.getState() === SessionState.ACTIVE) {
                 logger('Stopping session due to WaterRower disconnection');
                 this.currentSession.stop();
-                this.emitSessionStatus();
             }
         });
 
@@ -244,18 +278,8 @@ export class WebServer {
                 this.heartRateMonitor
             );
 
-            // Setup event handlers
-            this.currentSession.on('started', (data) => {
-                logger('Session started:', data);
-                this.emitSessionStatus();
-            });
-
-            this.currentSession.on('datapoint', (dataPoint) => {
-                // Emit real-time datapoint via WebSocket
-                this.io.emit('session:datapoint', dataPoint);
-                // Also emit updated summary
-                this.emitSessionStatus();
-            });
+            // Setup event listeners for the new session
+            this.setupSessionEventListeners(this.currentSession);
 
             await this.currentSession.start();
 
@@ -333,8 +357,6 @@ export class WebServer {
                 }
             }
 
-            // Emit session end
-            this.emitSessionStatus();
             res.json(response);
         } catch (error: any) {
             logger('Error stopping session:', error);
@@ -352,7 +374,6 @@ export class WebServer {
             }
 
             this.currentSession.pause();
-            this.emitSessionStatus();
             res.json({ success: true, message: 'Session paused' });
         } catch (error: any) {
             res.status(400).json({ error: error.message });
@@ -367,7 +388,6 @@ export class WebServer {
             }
 
             this.currentSession.resume();
-            this.emitSessionStatus();
             res.json({ success: true, message: 'Session resumed' });
         } catch (error: any) {
             res.status(400).json({ error: error.message });
