@@ -2,7 +2,7 @@ import debug from 'debug';
 import { EventEmitter } from 'events';
 import { Subject } from 'rxjs';
 
-import noble from '@abandonware/noble';
+import noble, { Peripheral, Characteristic } from '@stoprocent/noble';
 
 const logger = debug('HR_MONITOR');
 
@@ -16,8 +16,8 @@ export interface HeartRateData {
 }
 
 export class HeartRateMonitor extends EventEmitter {
-    private peripheral?: noble.Peripheral;
-    private characteristic?: noble.Characteristic;
+    private peripheral?: Peripheral;
+    private characteristic?: Characteristic;
     private connected = false;
     private scanning = false;
 
@@ -72,7 +72,7 @@ export class HeartRateMonitor extends EventEmitter {
     public async discover(): Promise<Array<{ id: string; name: string | undefined }>> {
         return new Promise((resolve) => {
             const devices: Array<{ id: string; name: string | undefined }> = [];
-            const discoveryHandler = (peripheral: noble.Peripheral) => {
+            const discoveryHandler = (peripheral: Peripheral) => {
                 const name = peripheral.advertisement.localName;
                 const hasHeartRateService = peripheral.advertisement.serviceUuids?.includes(HEART_RATE_SERVICE_UUID);
 
@@ -106,51 +106,40 @@ export class HeartRateMonitor extends EventEmitter {
 
         return new Promise((resolve, reject) => {
             const timeoutHandle = setTimeout(() => {
-                noble.stopScanning();
-                this.scanning = false;
                 reject(new Error('Heart rate monitor connection timeout'));
             }, timeout);
 
-            logger('Starting scan for heart rate monitors...');
+            logger(`Connecting directly to device: ${deviceId}`);
 
-            noble.on('discover', async (peripheral) => {
-                const id = peripheral.id;
-                const hasHeartRateService = peripheral.advertisement.serviceUuids?.includes(HEART_RATE_SERVICE_UUID);
+            const connectDevice = async () => {
+                try {
+                    // Direct connection without scanning
+                    const peripheral = await noble.connectAsync(deviceId);
 
-                const name = peripheral.advertisement.localName;
-                logger(`Discovered device: ${name} - HR Service: ${hasHeartRateService}`);
-
-                // Connect if it has heart rate service and matches device ID (if provided) or auto-connect to first device
-                if (hasHeartRateService && id === deviceId) {
                     clearTimeout(timeoutHandle);
-                    noble.stopScanning();
-                    this.scanning = false;
 
-                    try {
-                        await this.connectToPeripheral(peripheral);
-                        resolve();
-                    } catch (err) {
-                        reject(err);
-                    }
+                    await this.connectToPeripheral(peripheral);
+                    resolve();
+                } catch (err) {
+                    clearTimeout(timeoutHandle);
+                    reject(err);
                 }
-            });
+            };
 
-            // Wait for noble to be ready, then start scanning
-            if ((noble as any).state === 'poweredOn') {
-                noble.startScanning([HEART_RATE_SERVICE_UUID], false);
-                this.scanning = true;
+            // Wait for noble to be ready, then connect directly
+            if (noble.state === 'poweredOn') {
+                connectDevice();
             } else {
                 noble.once('stateChange', (state) => {
                     if (state === 'poweredOn') {
-                        noble.startScanning([HEART_RATE_SERVICE_UUID], false);
-                        this.scanning = true;
+                        connectDevice();
                     }
                 });
             }
         });
     }
 
-    private async connectToPeripheral(peripheral: noble.Peripheral): Promise<void> {
+    private async connectToPeripheral(peripheral: Peripheral): Promise<void> {
         this.peripheral = peripheral;
 
         logger(`Connecting to ${peripheral.advertisement.localName}...`);
@@ -190,7 +179,7 @@ export class HeartRateMonitor extends EventEmitter {
         await this.characteristic.subscribeAsync();
 
         // Setup data handler
-        this.characteristic.on('data', (data) => {
+        this.characteristic.on('data', (data: Buffer) => {
             this.parseHeartRateData(data);
         });
 

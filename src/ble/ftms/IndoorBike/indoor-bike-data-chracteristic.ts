@@ -1,4 +1,4 @@
-import { Characteristic, Descriptor } from '@abandonware/bleno';
+import { Characteristic, Descriptor } from '@stoprocent/bleno';
 import debug from 'debug';
 import { CharacteristicUserDescriptionUUID, IndoorBikeDataUUID } from '../../uuids';
 import { IndoorBikeDataFlag } from './indoor-bike-data';
@@ -24,7 +24,7 @@ export class IndoorBikeDataCharacteristic extends Characteristic {
         });
     }
 
-    public onReadRequest(_offset: number, callback: (result: number, data?: Buffer) => void): void {
+    public onReadRequest(_handle: number, _offset: number, callback: (result: number, data?: Buffer) => void): void {
         logger(`[${IndoorBikeDataUUID}][IndoorBikeDataCharacteristic] onReadRequest`);
 
         // Flags (16bit)
@@ -38,12 +38,12 @@ export class IndoorBikeDataCharacteristic extends Characteristic {
         callback(this.RESULT_SUCCESS, data);
     }
 
-    public onSubscribe(_maxValueSize: number, updateValueCallback: (data: Buffer) => void): void {
+    public onSubscribe(_handle: number, _maxValueSize: number, updateValueCallback: (data: Buffer) => void): void {
         logger(`[${IndoorBikeDataUUID}][IndoorBikeDataCharacteristic] onSubscribe`);
         this._updateValueCallback = updateValueCallback;
     }
 
-    onUnsubscribe(): void {
+    onUnsubscribe(_handle: number): void {
         logger(`[${IndoorBikeDataUUID}][IndoorBikeDataCharacteristic] onUnsubscribe`);
         this._updateValueCallback = null;
     }

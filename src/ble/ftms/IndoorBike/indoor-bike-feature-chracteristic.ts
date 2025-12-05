@@ -1,4 +1,4 @@
-import { Characteristic, Descriptor } from '@abandonware/bleno';
+import { Characteristic, Descriptor } from '@stoprocent/bleno';
 import debug from 'debug';
 import { CharacteristicUserDescriptionUUID, FitnessMachineFeatureUUID } from '../../uuids';
 import { FitnessMachineFeatureFlag } from './indoor-bike-data';
@@ -18,7 +18,7 @@ export class IndoorBikeFeatureCharacteristic extends Characteristic {
             ],
         });
     }
-    public onReadRequest(_offset: number, callback: (result: number, data?: Buffer) => void): void {
+    public onReadRequest(_handle: number, _offset: number, callback: (result: number, data?: Buffer) => void): void {
         logger(`[${FitnessMachineFeatureUUID}][IndoorBikeFeatureCharacteristic] onReadRequest`);
 
         // Fitness Machine Features (32bit), Target Setting Features (32bit)

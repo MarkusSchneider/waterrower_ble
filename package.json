@@ -22,8 +22,8 @@
   "author": "MarkusSchneider",
   "license": "MIT",
   "dependencies": {
-    "@abandonware/bleno": "0.6.2",
-    "@abandonware/noble": "1.9.2-26",
+    "@stoprocent/bleno": "^0.12.0",
+    "@stoprocent/noble": "^2.3.9",
     "@garmin/fitsdk": "21.178.0",
     "cors": "2.8.5",
     "debug": "4.4.3",

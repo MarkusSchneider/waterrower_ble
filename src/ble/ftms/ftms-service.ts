@@ -1,7 +1,7 @@
 import debug from 'debug';
 import { FitnessMachineServiceUUID } from '../uuids';
 import { IndoorBikeFeatureCharacteristic } from './IndoorBike';
-import { PrimaryService } from '@abandonware/bleno';
+import { PrimaryService } from '@stoprocent/bleno';
 import { IndoorBikeDataCharacteristic } from './IndoorBike/indoor-bike-data-chracteristic';
 const logger = debug('FTMS_SRV');
 
