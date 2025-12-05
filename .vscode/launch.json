@@ -16,6 +16,21 @@
                 // "DEBUG": "MAIN,HR_MONITOR,FTMS_SRV,FTMS,FIT_GENERATOR,GARMIN_UPLOADER,CONFIG_MANAGER,WR_SERIAL,WEB_SERVER"
             },
             "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Program - Log File",
+            "runtimeExecutable": "bash",
+            "args": [
+                "-lc",
+                "node -r ts-node/register ${workspaceFolder}/src/main.ts > ${workspaceFolder}/waterrower.log 2>&1",
+            ],
+            "env": {
+                "DEBUG": "MAIN,HR_MONITOR,FTMS_SRV,FTMS,FIT_GENERATOR,GARMIN_UPLOADER,CONFIG_MANAGER,TRAINING_SESSION,WR_SERIAL,WEB_SERVER"
+                // "DEBUG": "MAIN,HR_MONITOR,FTMS_SRV,FTMS,FIT_GENERATOR,GARMIN_UPLOADER,CONFIG_MANAGER,WR_SERIAL,WEB_SERVER"
+            },
+            "console": "integratedTerminal",
         }
     ]
 }

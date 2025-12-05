@@ -8,6 +8,8 @@ import { WaterRower } from '../waterrower-serial/waterrower-serial';
 
 const logger = debug('TRAINING_SESSION');
 
+const RECORD_SESSION = true;
+
 export interface TrainingDataPoint {
     timestamp: Date;
     elapsedTime: number; // seconds since start
@@ -96,7 +98,11 @@ export class TrainingSession extends EventEmitter {
         // Subscribe to WaterRower data
         this.waterRowerSubscription = this.waterRower.datapoints$.subscribe({
             next: (dataPoint: DataPoint | null) => {
-                if (!dataPoint || this.state !== SessionState.ACTIVE) return;
+                if (!dataPoint || this.state !== SessionState.ACTIVE) {
+                    return;
+                }
+
+                logger('Received WaterRower data point:', dataPoint);
                 this.processWaterRowerData(dataPoint);
             },
             error: (err) => {
@@ -169,6 +175,7 @@ export class TrainingSession extends EventEmitter {
         // Cleanup subscriptions
         this.waterRowerSubscription?.unsubscribe();
         this.waterRower.close();
+
         this.heartRateSubscription?.unsubscribe();
         this.heartRateMonitor.disconnect(); this.emit('stopped', this.getSummary());
 

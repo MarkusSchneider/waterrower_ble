@@ -19,6 +19,7 @@ export class WaterRower extends EventEmitter {
     private recordingSubscription: Subscription | null = null;
     private options: WaterRowerOptions = DEFAULT_WATER_ROWER_OPTIONS;
     private serialPort: SerialPort | null = null;
+    private requestTime: NodeJS.Timeout | null = null;
 
     // reads$ is all serial messages from the WR
     public reads$ = new Subject<ReadValue>();
@@ -91,12 +92,10 @@ export class WaterRower extends EventEmitter {
             logger(`A connection to the WaterRower has been established on ${options.portName}`);
             this.initialize();
             if (options.refreshRate !== 0) {
-                setInterval(() => this.requestDataPoints(this.options.datapoints), this.options.refreshRate);
+                this.requestTime = setInterval(() => this.requestDataPoints(this.options.datapoints), this.options.refreshRate);
             }
         });
         this.serialPort.on('data', (data: string) => {
-            logger(`read serial: ${data}`);
-
             const type = FrameTypes.find(t => t.pattern.test(data));
             this.reads$.next({ time: Date.now(), type: (type?.type ?? 'other'), data: data.toString() });
         });
@@ -184,6 +183,11 @@ export class WaterRower extends EventEmitter {
             this.serialPort.close(err => logger(err));
             this.serialPort = null;
         }
+
+        if (this.requestTime) {
+            clearInterval(this.requestTime);
+            this.requestTime = null;
+        }
     }
 
     /// reset console
@@ -215,7 +219,7 @@ export class WaterRower extends EventEmitter {
                 throw ('requestDataPoint requires a string, an array of strings, or nothing at all');
             }
         } else {
-            DataPoints.forEach(d => req(d.name));
+            DataPoints.forEach(d => setTimeout(() => req(d.name), 500));
         }
     }
 
