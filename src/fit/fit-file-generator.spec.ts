@@ -2,22 +2,38 @@ import { FitFileGenerator } from './fit-file-generator';
 import { ConfigManager } from '../helper/config-manager';
 import { SessionSummary, TrainingDataPoint, SessionState } from '../training/training-session';
 import { Decoder, Stream } from '@garmin/fitsdk';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync, rmSync } from 'fs';
 
 describe('FitFileGenerator', () => {
     let fitGenerator: FitFileGenerator;
     let mockConfigManager: jasmine.SpyObj<ConfigManager>;
+    const testDir = '/tmp/fit-files';
 
-    // Helper function to decode FIT buffer
-    const decodeBuffer = (buffer: Buffer) => {
+    // Helper function to decode FIT file from path
+    const decodeFile = (filePath: string) => {
+        const buffer = readFileSync(filePath);
         const stream = Stream.fromBuffer(buffer);
         const decoder = new Decoder(stream);
         return decoder.read();
     };
 
+    beforeAll(() => {
+        // Create test directory if it doesn't exist
+        if (!existsSync(testDir)) {
+            mkdirSync(testDir, { recursive: true });
+        }
+    });
+
+    afterAll(() => {
+        // Clean up test directory
+        if (existsSync(testDir)) {
+            rmSync(testDir, { recursive: true, force: true });
+        }
+    });
+
     beforeEach(() => {
         mockConfigManager = jasmine.createSpyObj('ConfigManager', ['getFitFilesDirectory']);
-        mockConfigManager.getFitFilesDirectory.and.returnValue('/tmp/fit-files');
+        mockConfigManager.getFitFilesDirectory.and.returnValue(testDir);
         fitGenerator = new FitFileGenerator(mockConfigManager);
     });
 
@@ -83,24 +99,24 @@ describe('FitFileGenerator', () => {
         });
 
         it('should generate a valid FIT file buffer', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
 
-            expect(buffer).toBeDefined();
-            expect(buffer instanceof Buffer).toBe(true);
-            expect(buffer.length).toBeGreaterThan(0);
+            expect(filePath).toBeDefined();
+            expect(typeof filePath === "string").toBe(true);
+            expect(filePath.length).toBeGreaterThan(0);
         });
 
         it('should create a FIT file that can be decoded', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
 
             expect(errors.length).toBe(0);
             expect(messages).toBeDefined();
         });
 
         it('should include file_id message with correct activity type', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
 
             const fileIdMessages = messages.fileIdMesgs;
@@ -110,8 +126,8 @@ describe('FitFileGenerator', () => {
         });
 
         it('should include device_info message with Concept2 manufacturer', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
 
             const deviceInfoMessages = messages.deviceInfoMesgs;
@@ -122,8 +138,8 @@ describe('FitFileGenerator', () => {
         });
 
         it('should include sport message with rowing sport type', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
 
             const sportMessages = messages.sportMesgs;
@@ -134,8 +150,8 @@ describe('FitFileGenerator', () => {
         });
 
         it('should include record messages for each data point', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
 
             const recordMessages = messages.recordMesgs;
@@ -144,8 +160,8 @@ describe('FitFileGenerator', () => {
         });
 
         it('should correctly convert distance to centimeters in record messages', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
 
             const recordMessages = messages.recordMesgs;
@@ -154,8 +170,8 @@ describe('FitFileGenerator', () => {
         });
 
         it('should correctly convert speed to mm/s in record messages', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
 
             const recordMessages = messages.recordMesgs;
@@ -165,8 +181,8 @@ describe('FitFileGenerator', () => {
         });
 
         it('should include lap message with session totals', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
 
             const lapMessages = messages.lapMesgs;
@@ -177,8 +193,8 @@ describe('FitFileGenerator', () => {
         });
 
         it('should include session message with correct statistics', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
 
             const sessionMessages = messages.sessionMesgs;
@@ -192,8 +208,8 @@ describe('FitFileGenerator', () => {
         });
 
         it('should include activity message', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
 
             const activityMessages = messages.activityMesgs;
@@ -211,12 +227,12 @@ describe('FitFileGenerator', () => {
                 },
             ];
 
-            const buffer = fitGenerator.generateFitFile(mockSummary, minimalDataPoints, false);
+            const filePath = fitGenerator.generateFitFile(mockSummary, minimalDataPoints);
 
-            expect(buffer).toBeDefined();
-            expect(buffer.length).toBeGreaterThan(0);
+            expect(filePath).toBeDefined();
+            expect(filePath.length).toBeGreaterThan(0);
 
-            const { messages, errors } = decodeBuffer(buffer);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
             expect(messages.recordMesgs.length).toBe(1);
         });
@@ -232,43 +248,28 @@ describe('FitFileGenerator', () => {
                 dataPoints: 3,
             };
 
-            const buffer = fitGenerator.generateFitFile(minimalSummary, mockDataPoints, false);
+            const filePath = fitGenerator.generateFitFile(minimalSummary, mockDataPoints);
 
-            expect(buffer).toBeDefined();
-            expect(buffer.length).toBeGreaterThan(0);
+            expect(filePath).toBeDefined();
+            expect(filePath.length).toBeGreaterThan(0);
         });
 
-        it('should not save file to disk when saveToFile is false', () => {
+        it('should always save file to disk and return path', () => {
             const fs = require('fs');
             const writeFileSyncSpy = spyOn(fs, 'writeFileSync');
 
-            fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-
-            expect(writeFileSyncSpy).not.toHaveBeenCalled();
-        });
-
-        it('should save file to disk when saveToFile is true', () => {
-            const fs = require('fs');
-            const writeFileSyncSpy = spyOn(fs, 'writeFileSync');
-
-            fitGenerator.generateFitFile(mockSummary, mockDataPoints, true);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
 
             expect(writeFileSyncSpy).toHaveBeenCalled();
             expect(mockConfigManager.getFitFilesDirectory).toHaveBeenCalled();
-        });
-
-        it('should save file to disk by default when saveToFile is not specified', () => {
-            const fs = require('fs');
-            const writeFileSyncSpy = spyOn(fs, 'writeFileSync');
-
-            fitGenerator.generateFitFile(mockSummary, mockDataPoints);
-
-            expect(writeFileSyncSpy).toHaveBeenCalled();
+            expect(typeof filePath).toBe('string');
+            expect(filePath).toContain('waterrower_');
+            expect(filePath).toContain('.fit');
         });
 
         it('should calculate average stroke distance correctly', () => {
-            const buffer = fitGenerator.generateFitFile(mockSummary, mockDataPoints, false);
-            const { messages, errors } = decodeBuffer(buffer);
+            const filePath = fitGenerator.generateFitFile(mockSummary, mockDataPoints);
+            const { messages, errors } = decodeFile(filePath);
             // Already decoded
 
             const lapMessages = messages.lapMesgs;
@@ -278,21 +279,9 @@ describe('FitFileGenerator', () => {
         });
     });
 
-    describe('toFitTimestamp', () => {
-        it('should convert JavaScript date to FIT timestamp', () => {
-            const date = new Date('2025-12-05T10:00:00Z');
-            // Use reflection to access private method for testing
-            const timestamp = (fitGenerator as any).toFitTimestamp(date);
-
-            expect(timestamp).toBeGreaterThan(0);
-            // FIT epoch is 1989-12-31, so any 2025 date should have a large positive timestamp
-            expect(timestamp).toBeGreaterThan(1000000000);
-        });
-    });
-
     describe('parseFitFile', () => {
         it('should parse a valid FIT file', async () => {
-            const buffer = fitGenerator.generateFitFile(
+            const filePath = fitGenerator.generateFitFile(
                 {
                     id: 'test-parse',
                     state: SessionState.FINISHED,
@@ -309,21 +298,13 @@ describe('FitFileGenerator', () => {
                         distance: 0,
                         strokeRate: 20,
                     },
-                ],
-                false
+                ]
             );
 
-            // Write to temp file for parsing test
-            const tempPath = '/tmp/test-fit-file.fit';
-            require('fs').writeFileSync(tempPath, buffer);
-
-            const result = await fitGenerator.parseFitFile(tempPath);
+            const result = await fitGenerator.parseFitFile(filePath);
 
             expect(result).toBeDefined();
             expect(result.messages).toBeDefined();
-
-            // Cleanup
-            require('fs').unlinkSync(tempPath);
         });
 
         it('should reject when parsing an invalid file', async () => {

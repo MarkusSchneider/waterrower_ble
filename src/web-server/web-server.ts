@@ -173,9 +173,6 @@ export class WebServer {
         // Configure Garmin credentials
         this.app.post('/api/garmin/configure', async (req, res) => { await this.handleConfigureGarmin(req, res); });
 
-        // Upload to Garmin
-        this.app.post('/api/garmin/upload/:sessionId', async (req, res) => { await this.handleUploadToGarmin(req, res); });
-
         // Check Garmin status
         this.app.get('/api/garmin/status', (req, res) => {
             res.json({
@@ -308,8 +305,7 @@ export class WebServer {
             const summary = this.currentSession.getSummary();
 
             // Generate FIT file
-
-            const fitBuffer = this.fitGenerator.generateFitFile(
+            const fitFilePath = this.fitGenerator.generateFitFile(
                 summary,
                 dataPoints,
             );
@@ -335,10 +331,7 @@ export class WebServer {
                         await this.garminUploader.login(garminCredentials);
                     }
 
-                    const uploadResult = await this.garminUploader.uploadActivityFromBuffer(
-                        fitBuffer,
-                        `WaterRower - ${summary.distance}m`
-                    );
+                    const uploadResult = await this.garminUploader.uploadActivity(fitFilePath);
 
                     response.garminUpload = uploadResult;
 
@@ -420,44 +413,6 @@ export class WebServer {
             logger('Garmin configuration error:', error);
             res.status(500).json({
                 error: error.message || 'Failed to configure Garmin Connect'
-            });
-        }
-    }
-
-    private async handleUploadToGarmin(req: Request, res: Response): Promise<void> {
-        try {
-            const { sessionId } = req.params;
-            const garminCredentials = this.configManager.getGarminCredentials();
-
-            if (!garminCredentials) {
-                res.status(400).json({
-                    error: 'Garmin Connect not configured. Please configure credentials first.'
-                });
-                return;
-            }
-
-            const session = this.sessionHistory.find(s => s.id === sessionId);
-            if (!session) {
-                res.status(404).json({ error: 'Session not found' });
-                return;
-            }
-
-            if (!this.garminUploader.isLoggedIn()) {
-                await this.garminUploader.login(garminCredentials);
-            }
-
-            const uploadResult = await this.garminUploader.uploadActivity(session.fitFilePath);
-
-            if (uploadResult.success) {
-                session.uploadedToGarmin = true;
-                session.garminActivityId = uploadResult.activityId;
-            }
-
-            res.json(uploadResult);
-        } catch (error: any) {
-            logger('Upload error:', error);
-            res.status(500).json({
-                error: error.message || 'Failed to upload to Garmin'
             });
         }
     }

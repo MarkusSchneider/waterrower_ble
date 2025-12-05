@@ -22,13 +22,13 @@
   "author": "MarkusSchneider",
   "license": "MIT",
   "dependencies": {
-    "@stoprocent/bleno": "^0.12.0",
-    "@stoprocent/noble": "^2.3.9",
+    "@stoprocent/bleno": "0.12.0",
+    "@stoprocent/noble": "2.3.9",
     "@garmin/fitsdk": "21.178.0",
     "cors": "2.8.5",
     "debug": "4.4.3",
     "express": "5.1.0",
-    "garmin-connect": "^1.6.2",
+    "garmin-connect": "1.6.2",
     "rxjs": "7.8.2",
     "serialport": "13.0.0",
     "socket.io": "4.7.2"

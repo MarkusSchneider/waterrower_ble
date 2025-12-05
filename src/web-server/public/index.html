@@ -860,34 +860,10 @@
                 ${session.avgHeartRate ? ' • ♥ ' + Math.round(session.avgHeartRate) + ' BPM' : ''}
               </small>
             </div>
-            <div class="session-actions">
-              ${!session.uploadedToGarmin ? `
-                <button class="btn-secondary" onclick="uploadToGarmin('${session.id}')">
-                  Upload to Garmin
-                </button>
-              ` : ''}
-            </div>
           </div>
         `).join('');
             } catch (error) {
                 console.error('Error loading history:', error);
-            }
-        }
-
-        async function uploadToGarmin(sessionId) {
-            try {
-                const response = await fetch(`${API_BASE}/garmin/upload/${sessionId}`, { method: 'POST' });
-                const data = await response.json();
-
-                if (data.success) {
-                    showAlert('success', 'Uploaded to Garmin Connect!');
-                    loadSessionHistory();
-                } else {
-                    showAlert('error', data.error || 'Upload failed');
-                }
-            } catch (error) {
-                console.error(error);
-                showAlert('error', 'Error: ' + error.message);
             }
         }
 

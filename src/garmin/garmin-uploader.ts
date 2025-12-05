@@ -1,7 +1,7 @@
 import debug from 'debug';
 import { readFileSync } from 'fs';
 import { GarminConnect } from 'garmin-connect';
-import { UploadFileType } from 'garmin-connect/dist/garmin/types';
+import { ISocialProfile, UploadFileType } from 'garmin-connect/dist/garmin/types';
 
 const logger = debug('GARMIN_UPLOADER');
 
@@ -52,7 +52,7 @@ export class GarminUploader {
     }
 
     /**
-     * Upload a FIT file to Garmin Connect
+     * Upload a FIT file from file path
      */
     public async uploadActivity(fitFilePath: string): Promise<UploadResult> {
         if (!this.isAuthenticated) {
@@ -60,49 +60,9 @@ export class GarminUploader {
         }
 
         try {
-            logger(`Uploading FIT file: ${fitFilePath}`);
+            logger(`Uploading FIT file from: ${fitFilePath}`);
 
-            // Read the FIT file
-            const fitData = readFileSync(fitFilePath, { encoding: 'utf-8' });
-
-            // Upload to Garmin Connect
-            // The garmin-connect library expects the file as a buffer
-            const result: any = await this.garminClient.uploadActivity(fitData, UploadFileType.fit);
-
-            logger(`Upload successful. Activity ID: ${result?.activityId}`);
-
-            return {
-                success: true,
-                activityId: result?.activityId
-            };
-        } catch (error: any) {
-            logger('Upload failed:', error);
-
-            return {
-                success: false,
-                error: error.message || 'Unknown error during upload'
-            };
-        }
-    }
-
-    /**
-     * Upload a FIT file from buffer
-     */
-    public async uploadActivityFromBuffer(
-        fitBuffer: Buffer,
-        activityName = 'WaterRower Indoor Rowing'
-    ): Promise<UploadResult> {
-        if (!this.isAuthenticated) {
-            throw new Error('Not authenticated. Please login first.');
-        }
-
-        try {
-            logger('Uploading FIT file from buffer...');
-
-            const result: any = await (this.garminClient as any).uploadActivity(fitBuffer as any, {
-                fileType: 'fit',
-                activityName
-            });
+            const result: any = await this.garminClient.uploadActivity(fitFilePath, 'fit');
 
             logger(`Upload successful. Activity ID: ${result?.activityId}`);
 
@@ -128,30 +88,9 @@ export class GarminUploader {
     }
 
     /**
-     * Logout from Garmin Connect
-     */
-    public async logout(): Promise<void> {
-        if (this.isAuthenticated) {
-            try {
-                logger('Logging out from Garmin Connect...');
-                // Logout method may not be available in all versions
-                if (typeof (this.garminClient as any).logout === 'function') {
-                    await (this.garminClient as any).logout();
-                }
-                this.isAuthenticated = false;
-                logger('Successfully logged out');
-            } catch (error) {
-                logger('Logout error:', error);
-                // Still mark as not authenticated even if logout fails
-                this.isAuthenticated = false;
-            }
-        }
-    }
-
-    /**
      * Get user profile info (for testing/verification)
      */
-    public async getUserProfile(): Promise<any> {
+    public async getUserProfile(): Promise<ISocialProfile> {
         if (!this.isAuthenticated) {
             throw new Error('Not authenticated. Please login first.');
         }

@@ -39,14 +39,12 @@ export class FitFileGenerator {
      * Using Concept2 rower profile for compatibility with Garmin
      * @param summary - Training session summary data
      * @param dataPoints - Array of training data points recorded during session
-     * @param saveToFile - Whether to save the FIT file to disk (default: true)
-     * @returns Buffer containing the FIT file data
+     * @returns Path to the generated FIT file
      */
     public generateFitFile(
         summary: SessionSummary,
         dataPoints: TrainingDataPoint[],
-        saveToFile: boolean = true,
-    ): Buffer {
+    ): string {
         logger('Generating FIT file...');
 
         const encoder = new Encoder();
@@ -159,22 +157,20 @@ export class FitFileGenerator {
         const uint8Array = encoder.close();
         const buffer = Buffer.from(uint8Array);
 
-        // Save to file if requested
-        if (saveToFile) {
-            const outputPath = this.configManager.getFitFilesDirectory();
-            const fileName = `waterrower_${new Date().getTime()}.fit`;
-            const fullPath = `${outputPath}/${fileName}`;
-            writeFileSync(fullPath, buffer);
-            logger(`FIT file saved to: ${fullPath}`);
-        }
+        // Save to file
+        const outputPath = this.configManager.getFitFilesDirectory();
+        const fileName = `waterrower_${new Date().getTime()}.fit`;
+        const fullPath = `${outputPath}/${fileName}`;
+        writeFileSync(fullPath, buffer);
+        logger(`FIT file saved to: ${fullPath}`);
 
-        return buffer;
+        return fullPath;
     }
 
     /**
      * Parse a FIT file (utility method for testing/debugging)
      */
-    public parseFitFile(filePath: string): Promise<any> {
+    public parseFitFile(filePath: string): Promise<{ messages: any; errors: any; }> {
         return new Promise((resolve, reject) => {
             try {
                 const buffer = readFileSync(filePath);
