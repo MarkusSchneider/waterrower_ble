@@ -72,6 +72,7 @@ export class FitFileGenerator {
         encoder.onMesg(Profile.MesgNum.SPORT, {
             sport: SPORT,
             subSport: SUB_SPORT,
+            name: 'Indoor Rowing',
         });
 
         // Record messages (data points)
