@@ -24,7 +24,7 @@ export class HeartRateMonitor extends EventEmitter {
     // Subject for publishing heart rate data
     public heartRate$ = new Subject<HeartRateData>();
 
-    constructor() {
+    constructor(savedDeviceId?: string) {
         super();
 
         // Setup noble state change handler
@@ -39,6 +39,34 @@ export class HeartRateMonitor extends EventEmitter {
                 }
             }
         });
+
+        // Auto-connect in background if a saved device ID is provided
+        if (savedDeviceId) {
+            logger(`Starting background connection to saved HRM device: ${savedDeviceId}`);
+
+            const maxAttempts = 30;
+            let attempts = 0;
+
+            const tryConnectToSavedDevice = () => {
+                if (attempts >= maxAttempts) {
+                    logger('Max background connection attempts reached for HRM device');
+                    return;
+                }
+
+                attempts++;
+                this.connect(savedDeviceId, 30000) // 30 seconds timeout
+                    .then(() => {
+                        logger('Successfully connected to saved HRM device in background');
+                    })
+                    .catch(err => {
+                        logger(`Background connection attempt ${attempts} to HRM failed: ${err.message}`);
+                        setTimeout(tryConnectToSavedDevice, 0);
+                    });
+            }
+
+            // wait 1 second before first attempt
+            setTimeout(tryConnectToSavedDevice, 1000);
+        }
     }
 
     public async discover(): Promise<Array<{ id: string; name: string | undefined }>> {

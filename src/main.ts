@@ -123,8 +123,11 @@ async function startWebServer(): Promise<void> {
   // Initialize configuration manager
   const configManager = new ConfigManager('./data');
 
-  // Initialize heart rate monitor (optional)
-  const heartRateMonitor = new HeartRateMonitor();
+  // Get saved HRM device
+  const savedHRMDevice = configManager.getHRMDevice();
+
+  // Initialize heart rate monitor (optional) - will auto-connect in background if device is saved
+  const heartRateMonitor = new HeartRateMonitor(savedHRMDevice?.id);
 
   // Initialize WaterRower
   const waterRower = createWaterRower(configManager.getWaterRowerPort());
@@ -137,12 +140,7 @@ async function startWebServer(): Promise<void> {
   });
 
   webServer.start();
-
-  const savedHRMDevice = configManager.getHRMDevice();
   waterRower.connectSerial();
-  heartRateMonitor
-    .connect(savedHRMDevice?.id, 10000)
-    .catch(err => logger(`Failed to connect to heart rate monitor: ${err.message}`));
 }
 
 try {
