@@ -24,7 +24,7 @@ const logger = debug('FIT_GENERATOR');
 
 // FIT file constants
 const FILE_TYPE = FitFileType.ACTIVITY;
-const MANUFACTURER = FitManufacturer.CONCEPT2;
+const MANUFACTURER = FitManufacturer.WATERROWER;
 const PRODUCT = Concept2Product.PM5;
 const SERIAL_NUMBER = 123456; // Default serial number if not provided
 const SOURCE_TYPE = FitSourceType.LOCAL;
@@ -36,7 +36,7 @@ export class FitFileGenerator {
 
     /**
      * Generate a FIT file from training session data
-     * Using Concept2 rower profile for compatibility with Garmin
+     * Using WaterRower manufacturer ID for proper device identification
      * @param summary - Training session summary data
      * @param dataPoints - Array of training data points recorded during session
      * @returns Path to the generated FIT file

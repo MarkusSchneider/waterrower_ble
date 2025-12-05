@@ -42,7 +42,14 @@ export class WebServer {
     private garminUploader: GarminUploader;
     private configManager: ConfigManager;
 
-    constructor(private options: WebServerOptions) {
+    constructor(options: WebServerOptions) {
+        this.waterRower = options.waterRower;
+        this.heartRateMonitor = options.heartRateMonitor;
+        this.configManager = options.configManager;
+        this.currentSession = null;
+        this.garminUploader = new GarminUploader();
+        this.fitGenerator = new FitFileGenerator(options.configManager);
+
         this.app = express();
         this.httpServer = createServer(this.app);
 
@@ -69,12 +76,7 @@ export class WebServer {
                 methods: ['GET', 'POST']
             }
         });
-        this.waterRower = options.waterRower;
-        this.heartRateMonitor = options.heartRateMonitor;
-        this.configManager = options.configManager;
-        this.currentSession = null;
-        this.garminUploader = new GarminUploader();
-        this.fitGenerator = new FitFileGenerator(options.configManager);
+
 
         this.setupMiddleware();
         this.setupRoutes();
