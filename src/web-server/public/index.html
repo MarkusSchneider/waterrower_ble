@@ -474,8 +474,6 @@
                 </div>
                 <div class="controls" style="margin-bottom: 10px;">
                     <button id="btnConnectWR" class="btn-start" onclick="connectWR()">Connect</button>
-                    <button id="btnDisconnectWR" class="btn-secondary hidden"
-                        onclick="disconnectWR()">Disconnect</button>
                 </div>
                 <div id="wrAlert" class="hidden"></div>
             </div>
@@ -939,21 +937,18 @@
         function updateWaterRowerUI(data) {
             const wrStatus = document.getElementById('wrStatus');
             const btnConnect = document.getElementById('btnConnectWR');
-            const btnDisconnect = document.getElementById('btnDisconnectWR');
             const wrStatusText = document.getElementById('wrStatusText');
 
             if (data.connected) {
                 wrStatus.textContent = 'Connected';
                 wrStatus.className = 'state-indicator state-active';
-                btnConnect.classList.add('hidden');
-                btnDisconnect.classList.remove('hidden');
+                btnConnect.disabled = true;
                 wrStatusText.textContent = 'Connected';
                 wrStatusText.className = 'state-indicator state-connected';
             } else {
                 wrStatus.textContent = 'Disconnected';
                 wrStatus.className = 'state-indicator state-idle';
-                btnConnect.classList.remove('hidden');
-                btnDisconnect.classList.add('hidden');
+                btnConnect.disabled = false;
                 wrStatusText.textContent = 'Disconnected';
                 wrStatusText.className = 'state-indicator state-disconnected';
             }
@@ -1072,20 +1067,6 @@
                 showWRAlert('error', 'Connection error: ' + error.message);
                 document.getElementById('btnConnectWR').disabled = false;
                 document.getElementById('btnConnectWR').textContent = 'Connect';
-            }
-        }
-
-        async function disconnectWR() {
-            try {
-                const response = await fetch(`${API_BASE}/waterrower/disconnect`, { method: 'POST' });
-                const data = await response.json();
-                if (data.success) {
-                    showWRAlert('success', 'Disconnected from WaterRower');
-                } else {
-                    showWRAlert('error', data.error || 'Failed to disconnect');
-                }
-            } catch (error) {
-                showWRAlert('error', 'Error: ' + error.message);
             }
         }
 

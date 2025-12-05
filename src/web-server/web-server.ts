@@ -121,9 +121,6 @@ export class WebServer {
     }
 
     private setupRoutes(): void {
-        // Health check
-        this.app.get('/api/health', (req, res) => { res.json({ status: 'ok', timestamp: new Date() }); });
-
         // Start training session
         this.app.post('/api/session/start', async (req, res) => { await this.handleStartSession(req, res); });
 
@@ -135,9 +132,6 @@ export class WebServer {
 
         // Resume training session
         this.app.post('/api/session/resume', (req, res) => { this.handleResumeSession(req, res); });
-
-        // Get current session data
-        this.app.get('/api/session/data', (req, res) => { this.handleGetSessionData(req, res); });
 
         // Get session history
         this.app.get('/api/sessions', (req, res) => { res.json({ sessions: this.sessionHistory }); });
@@ -378,22 +372,6 @@ export class WebServer {
         } catch (error: any) {
             res.status(400).json({ error: error.message });
         }
-    }
-
-    private handleGetSessionData(req: Request, res: Response): void {
-        if (!this.currentSession) {
-            res.status(400).json({ error: 'No active session' });
-            return;
-        }
-
-        const dataPoints = this.currentSession.getDataPoints();
-        const summary = this.currentSession.getSummary();
-
-        res.json({
-            summary,
-            dataPoints,
-            state: this.currentSession.getState()
-        });
     }
 
     private async handleConfigureGarmin(req: Request, res: Response): Promise<void> {

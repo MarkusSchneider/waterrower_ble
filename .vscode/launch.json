@@ -12,7 +12,8 @@
                 "${workspaceFolder}/src/main.ts",
             ],
             "env": {
-                "DEBUG": "MAIN,HR_MONITOR,FTMS_SRV,FTMS,FIT_GENERATOR,GARMIN_UPLOADER,CONFIG_MANAGER,WR_SERIAL,WEB_SERVER"
+                "DEBUG": "MAIN,HR_MONITOR,FTMS_SRV,FTMS,FIT_GENERATOR,GARMIN_UPLOADER,CONFIG_MANAGER,WEB_SERVER"
+                // "DEBUG": "MAIN,HR_MONITOR,FTMS_SRV,FTMS,FIT_GENERATOR,GARMIN_UPLOADER,CONFIG_MANAGER,WR_SERIAL,WEB_SERVER"
             },
             "console": "integratedTerminal"
         }

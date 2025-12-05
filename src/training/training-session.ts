@@ -88,7 +88,8 @@ export class TrainingSession extends EventEmitter {
         this.currentData = {};
 
         // Reset WaterRower
-        this.waterRower.reset();
+        this.waterRower.
+            this.waterRower.reset();
 
         // Subscribe to WaterRower data
         this.waterRowerSubscription = this.waterRower.datapoints$.subscribe({
