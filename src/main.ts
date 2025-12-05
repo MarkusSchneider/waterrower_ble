@@ -141,6 +141,22 @@ async function startWebServer(): Promise<void> {
 
   webServer.start();
   waterRower.connectSerial();
+
+  // Handle graceful shutdown
+  const shutdown = async (signal: string) => {
+    logger(`Received ${signal}, shutting down gracefully...`);
+    try {
+      await webServer.shutdown();
+      logger('Server shutdown complete');
+      process.exit(0);
+    } catch (error) {
+      logger('Error during shutdown:', error);
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 try {

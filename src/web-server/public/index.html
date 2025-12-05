@@ -389,6 +389,69 @@
             display: block;
         }
 
+        /* Server Disconnect Overlay */
+        .disconnect-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        }
+
+        .disconnect-overlay.show {
+            display: flex;
+        }
+
+        .disconnect-message {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .disconnect-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            color: #ef4444;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .disconnect-message h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .disconnect-message p {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .reconnect-button {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .reconnect-button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
         /* Mobile Responsive */
         @media (max-width: 768px) {
             body {
@@ -456,6 +519,17 @@
 </head>
 
 <body>
+    <!-- Server Disconnect Overlay -->
+    <div class="disconnect-overlay" id="disconnectOverlay">
+        <div class="disconnect-message">
+            <div class="disconnect-icon">⚠️</div>
+            <h2>Server Disconnected</h2>
+            <p>The connection to the WaterRower server has been lost. The server may have been shut down or your network
+                connection was interrupted.</p>
+            <button class="reconnect-button" onclick="location.reload()">Reconnect</button>
+        </div>
+    </div>
+
     <!-- Configuration Menu Overlay -->
     <div class="overlay" id="configOverlay" onclick="toggleConfigMenu()"></div>
 
@@ -659,14 +733,53 @@
                 updateGarminStatusUI(data);
             });
 
+            // Server shutdown notification
+            socket.on('server:shutdown', () => {
+                console.log('Server is shutting down');
+                showDisconnectOverlay();
+            });
+
             // Connection status
             socket.on('connect', () => {
                 console.log('Connected to server');
+                hideDisconnectOverlay();
             });
 
             socket.on('disconnect', () => {
                 console.log('Disconnected from server');
+                // Give it a moment to see if it's just a reconnection
+                setTimeout(() => {
+                    if (!socket.connected) {
+                        showDisconnectOverlay();
+                    }
+                }, 2000);
             });
+
+            // Reconnection events
+            socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                showDisconnectOverlay();
+            });
+
+            socket.on('reconnect', (attemptNumber) => {
+                console.log('Reconnected after', attemptNumber, 'attempts');
+                hideDisconnectOverlay();
+            });
+
+            socket.on('reconnect_failed', () => {
+                console.error('Reconnection failed');
+                showDisconnectOverlay();
+            });
+        }
+
+        function showDisconnectOverlay() {
+            const overlay = document.getElementById('disconnectOverlay');
+            overlay.classList.add('show');
+        }
+
+        function hideDisconnectOverlay() {
+            const overlay = document.getElementById('disconnectOverlay');
+            overlay.classList.remove('show');
         }
 
         function updateUI(data) {

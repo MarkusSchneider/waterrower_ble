@@ -486,4 +486,30 @@ export class WebServer {
             console.log(`🔌 API endpoint: http://localhost:${port}/api\n`);
         });
     }
+
+    public shutdown(): Promise<void> {
+        return new Promise((resolve) => {
+            logger('Shutting down web server...');
+
+            // Notify all connected clients about shutdown
+            this.io.emit('server:shutdown', {
+                message: 'Server is shutting down',
+                timestamp: new Date().toISOString()
+            });
+
+            // Give clients time to receive the shutdown message
+            setTimeout(() => {
+                // Close all socket connections
+                this.io.close(() => {
+                    logger('Socket.IO server closed');
+                });
+
+                // Close HTTP server
+                this.httpServer.close(() => {
+                    logger('HTTP server closed');
+                    resolve();
+                });
+            }, 500);
+        });
+    }
 }
