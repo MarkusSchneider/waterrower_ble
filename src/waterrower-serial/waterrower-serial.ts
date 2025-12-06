@@ -123,33 +123,38 @@ export class WaterRower extends EventEmitter {
                     logger(`parsing error: ${data.data}`);
                     return null;
                 }
+                const dataPointDefinition = DataPoints.find(point => point.address == m[2]);
+                if (dataPointDefinition == null) {
+                    logger(`unknown datapoint address: ${m[2]}`);
+                    return null;
+                }
 
                 const dataPoint: DataPoint =
                 {
                     time: new Date(data.time),
-                    name: DataPoints.find(point => point.address == m[2])?.name,
+                    name: dataPointDefinition.name,
                     length: { 'S': 1, 'D': 2, 'T': 3 }[m[1]] ?? 0,
                     address: m[2],
-                    value: m[3],
+                    value: parseInt(m[3], dataPointDefinition.radix),
                 };
 
                 return dataPoint;
             }));
 
-        //emit the data event
-        this.datapoints$.subscribe(d => {
-            if (d == null) {
-                return;
-            }
+        // //emit the data event
+        // this.datapoints$.subscribe(d => {
+        //     if (d == null) {
+        //         return;
+        //     }
 
-            const datapoint = DataPoints.find(d2 => d2.address == d.address);
-            if (datapoint == null) {
-                return;
-            }
+        //     const datapoint = DataPoints.find(d2 => d2.address == d.address);
+        //     if (datapoint == null) {
+        //         return;
+        //     }
 
-            datapoint.value = parseInt(d.value, datapoint.radix);
-            this.emit('data', datapoint);
-        });
+        //     datapoint.value = parseInt(d.value, datapoint.radix);
+        //     this.emit('data', datapoint);
+        // });
 
         // when the WR comes back with _WR_ then consider the WR initialized
         this.reads$

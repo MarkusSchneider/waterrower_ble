@@ -215,19 +215,19 @@ export class TrainingSession extends EventEmitter {
         logger('Processing WaterRower data point:', dataPoint);
         switch (dataPoint.name) {
             case 'stroke_rate':
-                this.currentData.strokeRate = parseInt(dataPoint.value, 16);
+                this.currentData.strokeRate = dataPoint.value;
                 break;
             case 'distance':
-                this.currentData.distance = parseInt(dataPoint.value, 16);
+                this.currentData.distance = dataPoint.value;
                 break;
             case 'total_kcal':
-                this.currentData.calories = parseInt(dataPoint.value, 16) / 10; // WaterRower reports in tenths
+                this.currentData.calories = dataPoint.value / 1000;
                 break;
             case 'strokes_cnt':
-                this.currentData.totalStrokes = parseInt(dataPoint.value, 16);
+                this.currentData.totalStrokes = dataPoint.value;
                 break;
-            case 'ms_average':
-                const speedCmPerSec = parseInt(dataPoint.value, 16);
+            case 'm_s_total':
+                const speedCmPerSec = dataPoint.value;
                 this.currentData.speed = speedCmPerSec / 100; // Convert cm/s to m/s
                 // Calculate power using rowing formula: Power (watts) = 2.8 × speed³
                 if (this.currentData.speed > 0) {

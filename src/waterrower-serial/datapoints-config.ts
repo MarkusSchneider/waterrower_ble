@@ -191,7 +191,7 @@ export interface DataPointDefinition {
 export const DataPoints: Array<DataPointDefinition> = [
     //performance variables
     { name: 'mph', address: '1A3', length: 'D', radix: 10, value: 0 },
-    { name: 'stroke_rate', address: '1A9', length: 'S', radix: 10, value: 0 },
+    { name: 'stroke_rate', address: '1A9', length: 'S', radix: 16, value: 0 },
 
     //screen mode variables
     { name: 'screen_mode', address: '00D', length: 'S', radix: 16, value: 0 },
@@ -199,8 +199,8 @@ export const DataPoints: Array<DataPointDefinition> = [
     { name: 'screen_interval', address: '00F', length: 'S', radix: 16, value: 0 },
 
     //distance variables
-    { name: 'ms_distance_dec', address: '054', length: 'S', radix: 16, value: 0 },
-    { name: 'ms_distance', address: '055', length: 'D', radix: 16, value: 0 },
+    { name: 'm_s_distance_dec', address: '054', length: 'S', radix: 16, value: 0 },
+    { name: 'm_s_distance', address: '055', length: 'D', radix: 16, value: 0 },
     { name: 'distance', address: '057', length: 'D', radix: 16, value: 0 },
     { name: 'test_count', address: '059', length: 'S', radix: 16, value: 0 },
 
