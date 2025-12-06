@@ -550,7 +550,7 @@ export class WebServer {
         const sslConfig = this.configManager.getSSLConfig();
 
         // Start HTTP server
-        this.httpServer.listen(port, () => {
+        this.httpServer.listen(port, '0.0.0.0', () => {
             logger(`HTTP server running on http://localhost:${port}`);
             console.log(`\n🚣 WaterRower Training Server`);
             console.log(`📡 Web interface: http://localhost:${port}`);
@@ -560,7 +560,7 @@ export class WebServer {
         // Start HTTPS server if available
         if (this.httpsServer && sslConfig?.enabled) {
             const httpsPort = sslConfig.port;
-            this.httpsServer.listen(httpsPort, () => {
+            this.httpsServer.listen(httpsPort, '0.0.0.0', () => {
                 logger(`HTTPS server running on https://localhost:${httpsPort}`);
                 console.log(`🔒 Secure interface: https://localhost:${httpsPort}`);
                 console.log(`🔐 Secure API endpoint: https://localhost:${httpsPort}/api\n`);
