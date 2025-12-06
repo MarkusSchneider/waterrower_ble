@@ -7,5 +7,3 @@ export const HeartRateMonitorEvents = {
     DISCONNECTED: Symbol('HeartRateMonitor:disconnected'),
     ERROR: Symbol('HeartRateMonitor:error'),
 } as const;
-
-export type HeartRateMonitorEventName = typeof HeartRateMonitorEvents[keyof typeof HeartRateMonitorEvents];

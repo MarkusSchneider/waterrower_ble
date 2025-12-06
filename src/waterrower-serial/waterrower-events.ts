@@ -7,5 +7,3 @@ export const WaterRowerEvents = {
     CLOSE: Symbol('WaterRower:close'),
     DATA: Symbol('WaterRower:data'),
 } as const;
-
-export type WaterRowerEventName = typeof WaterRowerEvents[keyof typeof WaterRowerEvents];

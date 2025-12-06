@@ -21,6 +21,7 @@ import {
 } from '../garmin/garmin-uploader';
 import {
     SessionState,
+    TrainingDataPoint,
     TrainingSession,
 } from '../training/training-session';
 import { WaterRower } from '../waterrower-serial/waterrower-serial';
@@ -110,11 +111,9 @@ export class WebServer {
             this.emitSessionStatus();
         });
 
-        session.on(TrainingSessionEvents.DATAPOINT, (dataPoint) => {
+        session.on(TrainingSessionEvents.DATAPOINT, (dataPoint: TrainingDataPoint) => {
             // Emit real-time datapoint via WebSocket
             this.io.emit('session:datapoint', dataPoint);
-            // Also emit updated summary
-            this.emitSessionStatus();
         });
 
         session.on(TrainingSessionEvents.ERROR, (error) => {
@@ -245,10 +244,8 @@ export class WebServer {
             return;
         }
 
-        const summary = this.currentSession.getSummary();
         this.io.emit('session:updated', {
             state: this.currentSession.getState(),
-            session: summary
         });
     }
 

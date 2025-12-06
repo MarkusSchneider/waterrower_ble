@@ -9,5 +9,3 @@ export const TrainingSessionEvents = {
     DATAPOINT: Symbol('TrainingSession:datapoint'),
     ERROR: Symbol('TrainingSession:error'),
 } as const;
-
-export type TrainingSessionEventName = typeof TrainingSessionEvents[keyof typeof TrainingSessionEvents];
