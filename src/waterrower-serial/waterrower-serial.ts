@@ -107,7 +107,7 @@ export class WaterRower extends EventEmitter {
         });
     }
 
-    public setupStreams(): void {
+    private setupStreams(): void {
         // this is the important stream for reading memory locations from the rower
         // IDS is a single, IDD is a double, and IDT is a triple byte memory location
         this.datapoints$ = this.reads$.pipe(

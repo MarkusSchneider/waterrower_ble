@@ -1,7 +1,7 @@
 import debug from 'debug';
 import { EventEmitter } from 'events';
 import { interval, Subscription, merge, Observable } from 'rxjs';
-import { withLatestFrom, startWith, filter, map } from 'rxjs/operators';
+import { filter, map } from 'rxjs/operators';
 
 import { HeartRateMonitor } from '../ble/heart-rate-monitor';
 import { DataPoint } from '../waterrower-serial/data-point';
@@ -131,7 +131,6 @@ export class TrainingSession extends EventEmitter {
         );
 
         if (this.heartRateMonitor.isConnected()) {
-
             observables$.push(
                 this.heartRateMonitor.heartRate$.pipe(
                     filter(() => this.state === SessionState.ACTIVE),
@@ -141,6 +140,7 @@ export class TrainingSession extends EventEmitter {
                 )
             );
         }
+        this.subscriptions.push(merge(...observables$).subscribe());
 
         // Emit datapoints every second
         const intervalSubscription = interval(1000)
@@ -159,6 +159,10 @@ export class TrainingSession extends EventEmitter {
         this.subscriptions.push(intervalSubscription);
 
         this.emit(TrainingSessionEvents.STARTED, { sessionId: this.sessionId, startTime: this.startTime });
+
+        setTimeout(() => {
+            void this.waterRower.playRecording('recording.txt');
+        }, 100);
     }
 
     public pause(): void {

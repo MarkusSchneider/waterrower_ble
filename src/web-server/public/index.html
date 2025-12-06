@@ -715,12 +715,12 @@
             // Real-time datapoints during active session
             socket.on('session:datapoint', (dataPoint) => {
                 if (dataPoint) {
-                    document.getElementById('timeValue').textContent = formatTime(dataPoint.duration);
+                    document.getElementById('timeValue').textContent = formatTime(dataPoint.elapsedTime);
                     document.getElementById('distanceValue').textContent = Math.round(dataPoint.distance || 0);
-                    document.getElementById('strokeRateValue').textContent = Math.round(dataPoint.strokeRate || 0); // Will be updated from datapoints
-                    document.getElementById('powerValue').textContent = Math.round(dataPoint.avgPower || 0);
-                    document.getElementById('heartRateValue').textContent = dataPoint.avgHeartRate ? Math.round(dataPoint.avgHeartRate) : '--';
-                    document.getElementById('caloriesValue').textContent = Math.round(dataPoint.totalCalories || 0);
+                    document.getElementById('strokeRateValue').textContent = Math.round(dataPoint.strokeRate || 0);
+                    document.getElementById('powerValue').textContent = Math.round(dataPoint.power || 0);
+                    document.getElementById('heartRateValue').textContent = dataPoint.heartRate ? Math.round(dataPoint.heartRate) : '--';
+                    document.getElementById('caloriesValue').textContent = Math.round(dataPoint.calories || 0);
                 }
             });
 

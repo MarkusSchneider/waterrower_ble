@@ -341,20 +341,20 @@ export class WebServer {
             };
 
             // Auto-upload to Garmin if configured
-            const garminCredentials = this.configManager.getGarminCredentials();
-            if (garminCredentials && req.body.autoUpload !== false) {
-                try {
-                    if (!this.garminUploader.isLoggedIn()) {
-                        await this.garminUploader.login(garminCredentials);
-                    }
+            // const garminCredentials = this.configManager.getGarminCredentials();
+            // if (garminCredentials && req.body.autoUpload !== false) {
+            //     try {
+            //         if (!this.garminUploader.isLoggedIn()) {
+            //             await this.garminUploader.login(garminCredentials);
+            //         }
 
-                    const uploadResult = await this.garminUploader.uploadActivity(fitFilePath);
+            //         const uploadResult = await this.garminUploader.uploadActivity(fitFilePath);
 
-                } catch (error: any) {
-                    logger('Auto-upload to Garmin failed:', error);
-                    response.success = false;
-                }
-            }
+            //     } catch (error: any) {
+            //         logger('Auto-upload to Garmin failed:', error);
+            //         response.success = false;
+            //     }
+            // }
 
             res.json(response);
         } catch (error: any) {
