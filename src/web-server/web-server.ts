@@ -560,37 +560,19 @@ export class WebServer {
     }
 
     public start(): void {
-        const port = this.configManager.getPort();
         const sslConfig = this.configManager.getSSLConfig();
+
+        const port = sslConfig?.enabled === true ? sslConfig.port : this.configManager.getPort();
+        const protocol = sslConfig?.enabled === true ? 'https' : 'http';
         const ipAddress = this.getLocalIPAddress();
-        const isHttpsEnabled = this.httpsServer && sslConfig?.enabled;
 
         // Start HTTP server
-        this.httpServer.listen(port, () => {
-            logger(`HTTP server running on http://${ipAddress}:${port}`);
+        this.httpServer.listen(port, '0.0.0.0', () => {
+            logger(`HTTP server running on ${protocol}://${ipAddress}:${port}`);
             console.log(`\n🚣 WaterRower Training Server`);
-            
-            if (isHttpsEnabled) {
-                const httpsPort = sslConfig.port;
-                console.log(`📡 Web interface: https://${ipAddress}:${httpsPort}`);
-                console.log(`🔌 API endpoint: https://${ipAddress}:${httpsPort}/api`);
-            } else {
-                console.log(`📡 Web interface: http://${ipAddress}:${port}`);
-                console.log(`🔌 API endpoint: http://${ipAddress}:${port}/api`);
-            }
+            console.log(`📡 Web interface: ${protocol}://${ipAddress}:${port}`);
+            console.log(`🔌 API endpoint: ${protocol}://${ipAddress}:${port}/api`);
         });
-
-        // Start HTTPS server if available
-        if (isHttpsEnabled) {
-            const httpsPort = sslConfig.port;
-            this.httpsServer.listen(httpsPort, () => {
-                logger(`HTTPS server running on https://${ipAddress}:${httpsPort}`);
-                console.log(`🔒 Secure interface: https://${ipAddress}:${httpsPort}`);
-                console.log(`🔐 Secure API endpoint: https://${ipAddress}:${httpsPort}/api\n`);
-            });
-        } else {
-            console.log(``);
-        }
     }
 
     public shutdown(): Promise<void> {
