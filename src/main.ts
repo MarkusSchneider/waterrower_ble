@@ -85,17 +85,15 @@ logger('Starting WaterRower Training System...');
 function createWaterRower(port?: string): WaterRower {
   return new WaterRower(options => {
     // Request all datapoints needed for FIT file generation
-    // options.datapoints = [
-    //   'stroke_rate',    // Strokes per minute (cadence)
-    //   'distance',       // Current session distance in meters
-    //   'total_kcal',     // Total calories burned
-    //   'strokes_cnt',    // Total stroke count
-    //   'm_s_average',    // Speed in cm/s (for speed and power calculation)
-    // ];
-    options.datapoints = undefined;
-    // Use saved port from config, or empty string to auto-discover
+    options.datapoints = [
+      'stroke_rate',    // Strokes per minute (cadence)
+      'distance',       // Current session distance in meters
+      'total_kcal',     // Total calories burned
+      'strokes_cnt',    // Total stroke count
+      'm_s_total',      // Speed in cm/s (for speed and power calculation)
+    ];
     options.portName = port || '';
-    options.refreshRate = 30000;
+    options.refreshRate = 1000;
   });
 }
 
