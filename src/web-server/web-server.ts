@@ -171,7 +171,7 @@ export class WebServer {
     private setupMiddleware(): void {
         this.app.use(cors());
         this.app.use(express.json());
-        this.app.use(express.static(path.join(__dirname, 'public')));
+        this.app.use(express.static(path.resolve('./www-root')));
 
         // Request logging
         this.app.use((req, res, next) => {
@@ -217,7 +217,7 @@ export class WebServer {
         this.app.post('/api/waterrower/connect', (req, res) => { this.handleConnectWaterRower(req, res); });
 
         // Serve the web UI
-        this.app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
+        this.app.get('/', (req, res) => { res.sendFile(path.resolve(path.join('www-root', 'index.html'))); });
     }
 
     private setupSocketIO(): void {
