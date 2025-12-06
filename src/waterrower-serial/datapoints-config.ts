@@ -181,12 +181,47 @@
 // hr_peak 1f9 ; peak heartrate (always)
 
 export interface DataPointDefinition {
-    name: string;
+    name: DataPointName;
     address: string;
     length: 'D' | 'S' | 'A';
     radix: 10 | 16;
     value: number;
 }
+
+export type DataPointName =
+    | 'clock_down'
+    | 'clock_down_dec'
+    | 'display_hr'
+    | 'display_min'
+    | 'display_sec'
+    | 'display_sec_dec'
+    | 'distance'
+    | 'distance_xxcm'
+    | 'kcal_watts'
+    | 'm_s_average'
+    | 'm_s_distance'
+    | 'm_s_distance_dec'
+    | 'm_s_proj_avg'
+    | 'm_s_stored'
+    | 'm_s_total'
+    | 'mph'
+    | 'pins_per_xxcm'
+    | 'screen_interval'
+    | 'screen_mode'
+    | 'screen_sub_mode'
+    | 'stroke_average'
+    | 'stroke_pull'
+    | 'stroke_rate'
+    | 'strokes_cnt'
+    | 'tank_volume'
+    | 'test_count'
+    | 'total_dis'
+    | 'total_dis_dec'
+    | 'total_kcal'
+    | 'workout_limit'
+    | 'workout_ms'
+    | 'workout_stroke'
+    | 'workout_time';
 
 export const DataPoints: Array<DataPointDefinition> = [
     //performance variables
