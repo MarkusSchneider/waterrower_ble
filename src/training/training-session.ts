@@ -10,8 +10,6 @@ import { TrainingSessionEvents } from './training-session-events';
 
 const logger = debug('TRAINING_SESSION');
 
-const RECORD_SESSION = true;
-
 export interface TrainingDataPoint {
     timestamp: Date;
     elapsedTime: number; // seconds since start
@@ -58,7 +56,6 @@ export class TrainingSession extends EventEmitter {
     private sessionData: TrainingDataPoint[] = [];
     private subscriptions: Subscription[] = [];
     private currentData: Partial<TrainingDataPoint> = {};
-    private secondCounter = 0;
 
     constructor(
         private waterRower: WaterRower,
@@ -90,7 +87,6 @@ export class TrainingSession extends EventEmitter {
         this.state = SessionState.ACTIVE;
         this.startTime = new Date();
         this.sessionData = [];
-        this.secondCounter = 0;
 
         // Reset WaterRower
         this.waterRower.reset();
@@ -149,9 +145,9 @@ export class TrainingSession extends EventEmitter {
         // Emit datapoints every second
         const intervalSubscription = interval(1000)
             .subscribe({
-                next: () => {
+                next: (elapsedSeconds) => {
                     if (this.state === SessionState.ACTIVE) {
-                        this.collectDataPoint();
+                        this.collectDataPoint(elapsedSeconds % 60 === 0);
                     }
                 },
                 error: (err) => {
@@ -164,9 +160,10 @@ export class TrainingSession extends EventEmitter {
 
         this.emit(TrainingSessionEvents.STARTED, { sessionId: this.sessionId, startTime: this.startTime });
 
-        setTimeout(() => {
-            void this.waterRower.playRecording('recording.txt');
-        }, 100);
+        // enable to replay recorded session
+        // setTimeout(() => {
+        //     void this.waterRower.playRecording('recording.txt');
+        // }, 100);
     }
 
     public pause(): void {
@@ -210,6 +207,7 @@ export class TrainingSession extends EventEmitter {
         this.waterRower.close();
         this.heartRateMonitor.disconnect();
 
+        this.collectDataPoint(true);
         this.emit(TrainingSessionEvents.STOPPED, this.getSummary());
 
         return this.sessionData;
@@ -228,7 +226,7 @@ export class TrainingSession extends EventEmitter {
             endTime: this.endTime,
             state: this.state,
             duration,
-            distance: lastPoint?.distance ?? 0,
+            distance: (lastPoint?.distance ?? 0) / 1000,
             avgHeartRate: heartRates.length > 0 ? heartRates.reduce((a, b) => a + b, 0) / heartRates.length : undefined,
             maxHeartRate: heartRates.length > 0 ? Math.max(...heartRates) : undefined,
             avgPower: powers.length > 0 ? powers.reduce((a, b) => a + b, 0) / powers.length : undefined,
@@ -239,7 +237,7 @@ export class TrainingSession extends EventEmitter {
         };
     }
 
-    private collectDataPoint(): void {
+    private collectDataPoint(pushToSessionData: boolean): void {
         if (this.state !== SessionState.ACTIVE) {
             return;
         }
@@ -259,9 +257,7 @@ export class TrainingSession extends EventEmitter {
         };
         this.emit(TrainingSessionEvents.DATAPOINT, dataPoint);
 
-        this.secondCounter++;
-        // Only push to datapoints array every 60 seconds
-        if (this.secondCounter % 60 !== 0) {
+        if (!pushToSessionData) {
             return;
         }
 
