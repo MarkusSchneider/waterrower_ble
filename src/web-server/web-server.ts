@@ -8,6 +8,7 @@ import { createServer } from 'http';
 import { createServer as createHttpsServer } from 'https';
 import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
+import { networkInterfaces } from 'os';
 
 import { TrainingSessionEvents } from '../training/training-session-events';
 import { WaterRowerEvents } from '../waterrower-serial/waterrower-events';
@@ -545,25 +546,47 @@ export class WebServer {
         }
     }
 
+    private getLocalIPAddress(): string {
+        const interfaces = networkInterfaces();
+        for (const name of Object.keys(interfaces)) {
+            for (const iface of interfaces[name] || []) {
+                // Skip internal and non-IPv4 addresses
+                if (iface.family === 'IPv4' && !iface.internal) {
+                    return iface.address;
+                }
+            }
+        }
+        return 'localhost';
+    }
+
     public start(): void {
         const port = this.configManager.getPort();
         const sslConfig = this.configManager.getSSLConfig();
+        const ipAddress = this.getLocalIPAddress();
+        const isHttpsEnabled = this.httpsServer && sslConfig?.enabled;
 
         // Start HTTP server
         this.httpServer.listen(port, () => {
-            logger(`HTTP server running on http://localhost:${port}`);
+            logger(`HTTP server running on http://${ipAddress}:${port}`);
             console.log(`\n🚣 WaterRower Training Server`);
-            console.log(`📡 Web interface: http://localhost:${port}`);
-            console.log(`🔌 API endpoint: http://localhost:${port}/api`);
+            
+            if (isHttpsEnabled) {
+                const httpsPort = sslConfig.port;
+                console.log(`📡 Web interface: https://${ipAddress}:${httpsPort}`);
+                console.log(`🔌 API endpoint: https://${ipAddress}:${httpsPort}/api`);
+            } else {
+                console.log(`📡 Web interface: http://${ipAddress}:${port}`);
+                console.log(`🔌 API endpoint: http://${ipAddress}:${port}/api`);
+            }
         });
 
         // Start HTTPS server if available
-        if (this.httpsServer && sslConfig?.enabled) {
+        if (isHttpsEnabled) {
             const httpsPort = sslConfig.port;
             this.httpsServer.listen(httpsPort, () => {
-                logger(`HTTPS server running on https://localhost:${httpsPort}`);
-                console.log(`🔒 Secure interface: https://localhost:${httpsPort}`);
-                console.log(`🔐 Secure API endpoint: https://localhost:${httpsPort}/api\n`);
+                logger(`HTTPS server running on https://${ipAddress}:${httpsPort}`);
+                console.log(`🔒 Secure interface: https://${ipAddress}:${httpsPort}`);
+                console.log(`🔐 Secure API endpoint: https://${ipAddress}:${httpsPort}/api\n`);
             });
         } else {
             console.log(``);

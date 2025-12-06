@@ -8,8 +8,8 @@ Type=simple
 User=root
 WorkingDirectory=/root/waterrower_ble
 Environment="NODE_ENV=production"
-Environment="DEBUG=*"
-ExecStart=/usr/bin/node /root/waterrower_ble/dist/main.js
+Environment="DEBUG=MAIN,HR_MONITOR,FTMS_SRV,FTMS,FIT_GENERATOR,GARMIN_UPLOADER,CONFIG_MANAGER,WEB_SERVER"
+ExecStart=/usr/local/bin/node /root/waterrower_ble/dist/main.js
 Restart=always
 RestartSec=10
 StandardOutput=journal
