@@ -8,6 +8,10 @@ import { createServer } from 'http';
 import { createServer as createHttpsServer } from 'https';
 import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
+
+import { TrainingSessionEvents } from '../training/training-session-events';
+import { WaterRowerEvents } from '../waterrower-serial/waterrower-events';
+import { HeartRateMonitorEvents } from '../ble/heart-rate-monitor-events';
 import { readdirSync, statSync, readFileSync, existsSync } from 'fs';
 
 import { HeartRateMonitor } from '../ble/heart-rate-monitor';
@@ -86,34 +90,34 @@ export class WebServer {
 
     private setupSessionEventListeners(session: TrainingSession): void {
         // Subscribe to session lifecycle events
-        session.on('started', () => {
+        session.on(TrainingSessionEvents.STARTED, () => {
             logger('Session started event received');
             this.emitSessionStatus();
         });
 
-        session.on('paused', () => {
+        session.on(TrainingSessionEvents.PAUSED, () => {
             logger('Session paused event received');
             this.emitSessionStatus();
         });
 
-        session.on('resumed', () => {
+        session.on(TrainingSessionEvents.RESUMED, () => {
             logger('Session resumed event received');
             this.emitSessionStatus();
         });
 
-        session.on('stopped', () => {
+        session.on(TrainingSessionEvents.STOPPED, () => {
             logger('Session stopped event received');
             this.emitSessionStatus();
         });
 
-        session.on('datapoint', (dataPoint) => {
+        session.on(TrainingSessionEvents.DATAPOINT, (dataPoint) => {
             // Emit real-time datapoint via WebSocket
             this.io.emit('session:datapoint', dataPoint);
             // Also emit updated summary
             this.emitSessionStatus();
         });
 
-        session.on('error', (error) => {
+        session.on(TrainingSessionEvents.ERROR, (error) => {
             logger('Session error:', error);
             this.io.emit('session:error', { error: error.message });
         });
@@ -121,12 +125,12 @@ export class WebServer {
 
     private setupDeviceEventListeners(): void {
         // Listen to WaterRower lifecycle events
-        this.waterRower.on('initialized', () => {
+        this.waterRower.on(WaterRowerEvents.INITIALIZED, () => {
             logger('WaterRower initialized');
             this.emitWaterRowerStatus();
         });
 
-        this.waterRower.on('close', () => {
+        this.waterRower.on(WaterRowerEvents.CLOSE, () => {
             logger('WaterRower connection closed');
             this.emitWaterRowerStatus();
             // If there's an active session, stop it
@@ -136,28 +140,28 @@ export class WebServer {
             }
         });
 
-        this.waterRower.on('error', (error) => {
+        this.waterRower.on(WaterRowerEvents.ERROR, (error) => {
             logger('WaterRower error:', error);
             this.io.emit('waterrower:error', { error: error.message });
             this.emitWaterRowerStatus();
         });
 
         // Listen to HeartRateMonitor lifecycle events
-        this.heartRateMonitor.on('ready', () => {
+        this.heartRateMonitor.on(HeartRateMonitorEvents.READY, () => {
             logger('HeartRateMonitor ready');
         });
 
-        this.heartRateMonitor.on('connected', () => {
+        this.heartRateMonitor.on(HeartRateMonitorEvents.CONNECTED, () => {
             logger('HeartRateMonitor connected');
             this.emitHRMStatus();
         });
 
-        this.heartRateMonitor.on('disconnected', () => {
+        this.heartRateMonitor.on(HeartRateMonitorEvents.DISCONNECTED, () => {
             logger('HeartRateMonitor disconnected');
             this.emitHRMStatus();
         });
 
-        this.heartRateMonitor.on('error', (error) => {
+        this.heartRateMonitor.on(HeartRateMonitorEvents.ERROR, (error) => {
             logger('HeartRateMonitor error:', error);
             this.io.emit('hrm:error', { error: error.message });
             this.emitHRMStatus();

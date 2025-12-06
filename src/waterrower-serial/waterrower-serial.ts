@@ -24,7 +24,7 @@ export class WaterRower extends EventEmitter {
     // reads$ is all serial messages from the WR
     public reads$ = new Subject<ReadValue>();
     // datapoints$ isonly the reads that are a report of a memory location's value 
-    public datapoints$: Observable<DataPoint | null> = of();
+    public datapoints$: Observable<DataPoint> = of();
 
     constructor(optionsFn: (o: WaterRowerOptions) => void) {
         super();
@@ -139,7 +139,9 @@ export class WaterRower extends EventEmitter {
                 };
 
                 return dataPoint;
-            }));
+            }),
+            filter(dataPoint => dataPoint !== null)
+        );
 
         // //emit the data event
         // this.datapoints$.subscribe(d => {

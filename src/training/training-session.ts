@@ -1,10 +1,12 @@
 import debug from 'debug';
 import { EventEmitter } from 'events';
-import { interval, Subscription } from 'rxjs';
+import { interval, Subscription, merge, Observable } from 'rxjs';
+import { withLatestFrom, startWith, filter, map } from 'rxjs/operators';
 
 import { HeartRateMonitor } from '../ble/heart-rate-monitor';
 import { DataPoint } from '../waterrower-serial/data-point';
 import { WaterRower } from '../waterrower-serial/waterrower-serial';
+import { TrainingSessionEvents } from './training-session-events';
 
 const logger = debug('TRAINING_SESSION');
 
@@ -53,12 +55,10 @@ export class TrainingSession extends EventEmitter {
     private pauseTime?: Date;
     private totalPausedTime = 0; // milliseconds
 
-    private dataPoints: TrainingDataPoint[] = [];
-    private waterRowerSubscription?: Subscription;
-    private heartRateSubscription?: Subscription;
-
+    private sessionData: TrainingDataPoint[] = [];
+    private subscriptions: Subscription[] = [];
     private currentData: Partial<TrainingDataPoint> = {};
-    private intervalTimer: NodeJS.Timeout | null = null;
+    private secondCounter = 0;
 
     constructor(
         private waterRower: WaterRower,
@@ -89,50 +89,76 @@ export class TrainingSession extends EventEmitter {
         logger('Starting training session');
         this.state = SessionState.ACTIVE;
         this.startTime = new Date();
-        this.dataPoints = [];
-        this.currentData = {};
+        this.sessionData = [];
+        this.secondCounter = 0;
 
         // Reset WaterRower
         this.waterRower.reset();
 
-        // Subscribe to WaterRower data
-        this.waterRowerSubscription = this.waterRower.datapoints$.subscribe({
-            next: (dataPoint: DataPoint | null) => {
-                if (!dataPoint || this.state !== SessionState.ACTIVE) {
-                    return;
-                }
+        const observables$: Observable<unknown>[] = [];
+        observables$.push(
+            this.waterRower.datapoints$.pipe(
+                filter(() => this.state === SessionState.ACTIVE),
+                map((dataPoint) => {
+                    if (!dataPoint) {
+                        return;
+                    }
 
-                logger('Received WaterRower data point:', dataPoint);
-                this.processWaterRowerData(dataPoint);
-            },
-            error: (err) => {
-                logger('WaterRower error:', err);
-                this.emit('error', err);
-            }
-        });
+                    switch (dataPoint.name) {
+                        case 'stroke_rate':
+                            this.currentData.strokeRate = dataPoint.value;
+                            break;
+                        case 'distance':
+                            this.currentData.distance = dataPoint.value;
+                            break;
+                        case 'total_kcal':
+                            this.currentData.calories = dataPoint.value / 1000;
+                            break;
+                        case 'strokes_cnt':
+                            this.currentData.totalStrokes = dataPoint.value;
+                            break;
+                        case 'm_s_total':
+                            const speedCmPerSec = dataPoint.value;
+                            this.currentData.speed = speedCmPerSec / 100; // Convert cm/s to m/s
+                            // Calculate power using rowing formula: Power (watts) = 2.8 × speed³
+                            if (this.currentData.speed > 0) {
+                                this.currentData.power = 2.8 * Math.pow(this.currentData.speed, 3);
+                            }
+                            break;
+                    }
+                })
+            )
+        );
 
-        // Subscribe to heart rate if monitor is available and connected
         if (this.heartRateMonitor.isConnected()) {
-            this.heartRateSubscription = this.heartRateMonitor.heartRate$.subscribe({
-                next: (data) => {
-                    if (this.state === SessionState.ACTIVE) {
+
+            observables$.push(
+                this.heartRateMonitor.heartRate$.pipe(
+                    filter(() => this.state === SessionState.ACTIVE),
+                    map((data) => {
                         this.currentData.heartRate = data.heartRate;
+                    })
+                )
+            );
+        }
+
+        // Emit datapoints every second
+        const intervalSubscription = interval(1000)
+            .subscribe({
+                next: () => {
+                    if (this.state === SessionState.ACTIVE) {
+                        this.collectDataPoint();
                     }
                 },
                 error: (err) => {
-                    logger('Heart rate monitor error:', err);
+                    logger('Collection interval error:', err);
+                    this.emit(TrainingSessionEvents.ERROR, err);
                 }
             });
-        } else if (this.heartRateMonitor) {
-            logger('Heart rate monitor configured but not connected. Continuing without HRM data.');
-        }
 
-        // Start periodic data collection (every second)
-        this.intervalTimer = setInterval(() => {
-            this.collectDataPoint();
-        }, 1000);
+        this.subscriptions.push(intervalSubscription);
 
-        this.emit('started', { sessionId: this.sessionId, startTime: this.startTime });
+        this.emit(TrainingSessionEvents.STARTED, { sessionId: this.sessionId, startTime: this.startTime });
     }
 
     public pause(): void {
@@ -143,7 +169,7 @@ export class TrainingSession extends EventEmitter {
         logger('Pausing training session');
         this.state = SessionState.PAUSED;
         this.pauseTime = new Date();
-        this.emit('paused');
+        this.emit(TrainingSessionEvents.PAUSED);
     }
 
     public resume(): void {
@@ -156,7 +182,7 @@ export class TrainingSession extends EventEmitter {
             this.totalPausedTime += Date.now() - this.pauseTime.getTime();
         }
         this.state = SessionState.ACTIVE;
-        this.emit('resumed');
+        this.emit(TrainingSessionEvents.RESUMED);
     }
 
     public stop(): TrainingDataPoint[] {
@@ -166,32 +192,27 @@ export class TrainingSession extends EventEmitter {
 
         logger('Stopping training session');
 
-        this.intervalTimer?.close();
-        this.intervalTimer = null;
-
         this.state = SessionState.FINISHED;
         this.endTime = new Date();
 
-        // Cleanup subscriptions
-        this.waterRowerSubscription?.unsubscribe();
+        // Cleanup all subscriptions
+        this.subscriptions.forEach(sub => sub.unsubscribe());
+        this.subscriptions = [];
+
         this.waterRower.close();
+        this.heartRateMonitor.disconnect();
 
-        this.heartRateSubscription?.unsubscribe();
-        this.heartRateMonitor.disconnect(); this.emit('stopped', this.getSummary());
+        this.emit(TrainingSessionEvents.STOPPED, this.getSummary());
 
-        return this.dataPoints;
-    }
-
-    public getDataPoints(): TrainingDataPoint[] {
-        return [...this.dataPoints];
+        return this.sessionData;
     }
 
     public getSummary(): SessionSummary {
         const duration = this.calculateDuration();
-        const lastPoint = this.dataPoints[this.dataPoints.length - 1];
+        const lastPoint = this.sessionData[this.sessionData.length - 1];
 
-        const heartRates = this.dataPoints.map(dp => dp.heartRate).filter(hr => hr !== undefined) as number[];
-        const powers = this.dataPoints.map(dp => dp.power).filter(p => p !== undefined) as number[];
+        const heartRates = this.sessionData.map(dp => dp.heartRate).filter(hr => hr !== undefined) as number[];
+        const powers = this.sessionData.map(dp => dp.power).filter(p => p !== undefined) as number[];
 
         return {
             id: this.sessionId,
@@ -206,35 +227,8 @@ export class TrainingSession extends EventEmitter {
             maxPower: powers.length > 0 ? Math.max(...powers) : undefined,
             totalCalories: lastPoint?.calories,
             totalStrokes: lastPoint?.totalStrokes,
-            dataPoints: this.dataPoints.length
+            dataPoints: this.sessionData.length
         };
-    }
-
-    private processWaterRowerData(dataPoint: DataPoint): void {
-        // Update current data based on the data point received
-        logger('Processing WaterRower data point:', dataPoint);
-        switch (dataPoint.name) {
-            case 'stroke_rate':
-                this.currentData.strokeRate = dataPoint.value;
-                break;
-            case 'distance':
-                this.currentData.distance = dataPoint.value;
-                break;
-            case 'total_kcal':
-                this.currentData.calories = dataPoint.value / 1000;
-                break;
-            case 'strokes_cnt':
-                this.currentData.totalStrokes = dataPoint.value;
-                break;
-            case 'm_s_total':
-                const speedCmPerSec = dataPoint.value;
-                this.currentData.speed = speedCmPerSec / 100; // Convert cm/s to m/s
-                // Calculate power using rowing formula: Power (watts) = 2.8 × speed³
-                if (this.currentData.speed > 0) {
-                    this.currentData.power = 2.8 * Math.pow(this.currentData.speed, 3);
-                }
-                break;
-        }
     }
 
     private collectDataPoint(): void {
@@ -255,9 +249,15 @@ export class TrainingSession extends EventEmitter {
             speed: this.currentData.speed,
             totalStrokes: this.currentData.totalStrokes
         };
+        this.emit(TrainingSessionEvents.DATAPOINT, dataPoint);
 
-        this.dataPoints.push(dataPoint);
-        this.emit('datapoint', dataPoint);
+        this.secondCounter++;
+        // Only push to datapoints array every 60 seconds
+        if (this.secondCounter % 60 !== 0) {
+            return;
+        }
+
+        this.sessionData.push(dataPoint);
     }
 
     private calculateDuration(): number {
