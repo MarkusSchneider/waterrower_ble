@@ -109,10 +109,14 @@ export class TrainingSession extends EventEmitter {
                             this.currentData.strokeRate = dataPoint.value;
                             break;
                         case 'distance':
-                            this.currentData.distance = dataPoint.value;
+                            const distance = dataPoint.value;
+                            const currentDistance = this.currentData.distance ?? 0;
+                            this.currentData.distance = distance > currentDistance ? distance : currentDistance;
                             break;
                         case 'total_kcal':
-                            this.currentData.calories = dataPoint.value / 1000;
+                            const cal = dataPoint.value / 1000;
+                            const currentCal = this.currentData.calories ?? 0;
+                            this.currentData.calories = currentCal > cal ? currentCal : cal;
                             break;
                         case 'strokes_cnt':
                             this.currentData.totalStrokes = dataPoint.value;
