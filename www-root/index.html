@@ -941,6 +941,7 @@
                     (data.configured ? '⚠️ Configured but not authenticated' : '❌ Not configured');
 
                 document.getElementById('garminStatus').textContent = statusText;
+                document.getElementById('garminEmail').value = data.email;
             } catch (error) {
                 console.error('Error checking Garmin status:', error);
             }
@@ -1015,6 +1016,13 @@
                 (data.configured ? '⚠️ Configured but not authenticated' : '❌ Not configured');
 
             document.getElementById('garminStatus').textContent = statusText;
+
+            // Restore email if configured
+            if (data.email) {
+                document.getElementById('garminEmail').value = data.email;
+            } else {
+                document.getElementById('garminEmail').value = '';
+            }
         }
 
         async function discoverHRM() {

@@ -198,9 +198,11 @@ export class WebServer {
 
         // Check Garmin status
         this.app.get('/api/garmin/status', (req, res) => {
+            const credentials = this.configManager.getGarminCredentials();
             res.json({
-                configured: !!this.configManager.getGarminCredentials(),
-                authenticated: this.garminUploader.isLoggedIn()
+                configured: !!credentials,
+                authenticated: this.garminUploader.isLoggedIn(),
+                email: credentials?.email ?? ''
             });
         });
 
@@ -271,9 +273,11 @@ export class WebServer {
     }
 
     private emitGarminStatus(): void {
+        const credentials = this.configManager.getGarminCredentials();
         this.io.emit('garmin:updated', {
-            configured: !!this.configManager.getGarminCredentials(),
-            authenticated: this.garminUploader.isLoggedIn()
+            configured: !!credentials,
+            authenticated: this.garminUploader.isLoggedIn(),
+            email: credentials?.email
         });
     }
 
