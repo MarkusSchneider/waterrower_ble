@@ -201,7 +201,9 @@ export class WaterRower extends EventEmitter {
     /// There is no return value. Data point values can be read very
     /// shortly after the request is made 
     requestDataPoints(points?: string | Array<string>): void {
-        const req = (name: string): void => {
+        const delayMs = 50;
+
+        const reqValue = (name: string): void => {
             logger('requesting ' + name);
             const dataPoint = DataPoints.find(d => d.name == name);
             if (dataPoint == null) {
@@ -212,14 +214,14 @@ export class WaterRower extends EventEmitter {
 
         if (points) {
             if (Array.isArray(points)) {
-                points.forEach(p => req(p));
+                points.forEach((p, i) => setTimeout(() => reqValue(p), delayMs * i));
             } else if (typeof points === 'string') {
-                req(points);
+                reqValue(points);
             } else {
                 throw ('requestDataPoint requires a string, an array of strings, or nothing at all');
             }
         } else {
-            DataPoints.forEach(d => setTimeout(() => req(d.name), 500));
+            DataPoints.forEach((d, i) => setTimeout(() => reqValue(d.name), delayMs * i));
         }
     }
 
