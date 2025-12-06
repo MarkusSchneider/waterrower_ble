@@ -349,14 +349,14 @@ export class WebServer {
                         await this.garminUploader.login(garminCredentials);
                     }
 
-                    const uploadResult = await this.garminUploader.uploadActivity(fitFilePath);
-
+                    await this.garminUploader.uploadActivity(fitFilePath);
                 } catch (error: any) {
                     logger('Auto-upload to Garmin failed:', error);
                     response.success = false;
                 }
             }
 
+            this.waterRower.reset();
             res.json(response);
         } catch (error: any) {
             logger('Error stopping session:', error);
