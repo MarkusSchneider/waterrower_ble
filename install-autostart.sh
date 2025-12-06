@@ -45,6 +45,7 @@ systemctl enable waterrower.service
 
 # Start the service now
 echo "🚀 Starting service..."
+systemctl stop waterrower.service
 systemctl start waterrower.service
 
 echo ""
