@@ -622,7 +622,7 @@
                 <div class="device-status" id="hrmStatusMain">
                     <span class="device-status-icon">❤️</span>
                     <span id="hrmStatusText" class="state-indicator state-disconnected">Disconnected</span>
-                    <span id="hrmBattery" style="color: #666;"> </span>
+                    <span id="hrmBattery" style="color: #666;"></span>
                 </div>
             </div>
 
@@ -997,9 +997,9 @@
                     }
 
                     hrmBattery.innerHTML = `<span style="color: ${batteryColor}; font-weight: 600;">${batteryIcon} ${batteryPercent}%</span>`;
+                    hrmBattery.hidden = false;
                 } else {
-                    hrmBattery.textContent = 'N/A';
-                    hrmBattery.style.color = '#666';
+                    hrmBattery.hidden = true;
                 }
             } else {
                 hrmStatus.textContent = 'Disconnected';
@@ -1008,8 +1008,7 @@
                 btnDisconnect.classList.add('hidden');
                 hrmStatusText.textContent = 'Disconnected';
                 hrmStatusText.className = 'state-indicator state-disconnected';
-                hrmBattery.textContent = '--';
-                hrmBattery.style.color = '#666';
+                hrmBattery.hidden = true;
             }
         }
 
