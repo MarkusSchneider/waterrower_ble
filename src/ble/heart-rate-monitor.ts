@@ -15,6 +15,10 @@ const DISCOVERTY_TIMEOUT = 10000;
 // Generic Access Service and Device Name Characteristic UUIDs
 const GENERIC_ACCESS_SERVICE_UUID = '1800';
 const DEVICE_NAME_CHARACTERISTIC_UUID = '2a00';
+
+// Battery Service and Battery Level Characteristic UUIDs
+const BATTERY_SERVICE_UUID = '180f';
+const BATTERY_LEVEL_CHARACTERISTIC_UUID = '2a19';
 export interface HeartRateData {
     time: number;
     heartRate: number;
@@ -25,6 +29,7 @@ export class HeartRateMonitor extends EventEmitter {
     private characteristic?: Characteristic;
     private connected = false;
     private deviceName = '';
+    private batteryLevel: number | null = null;
 
     // Subject for publishing heart rate data
     public heartRate$ = new Subject<HeartRateData>();
@@ -141,6 +146,21 @@ export class HeartRateMonitor extends EventEmitter {
             }
         }
 
+        // Try to read battery level from Battery Service if available
+        const batteryService = services.find(s => s.uuid === BATTERY_SERVICE_UUID);
+        if (batteryService) {
+            const batteryLevelChar = batteryService.characteristics.find(c => c.uuid === BATTERY_LEVEL_CHARACTERISTIC_UUID);
+            if (batteryLevelChar) {
+                try {
+                    const batteryBuffer = await batteryLevelChar.readAsync();
+                    this.batteryLevel = batteryBuffer.readUInt8(0);
+                    logger(`Read battery level: ${this.batteryLevel}%`);
+                } catch (err) {
+                    logger(`Failed to read battery level: ${err}`);
+                }
+            }
+        }
+
         // Find heart rate service
         const hrService = services.find(s => s.uuid === HEART_RATE_SERVICE_UUID);
         if (!hrService) {
@@ -203,5 +223,9 @@ export class HeartRateMonitor extends EventEmitter {
 
     public getDeviceName(): string {
         return this.deviceName;
+    }
+
+    public getBatteryLevel(): number | null {
+        return this.batteryLevel;
     }
 }

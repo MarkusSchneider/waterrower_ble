@@ -254,7 +254,8 @@ export class WebServer {
         try {
             const connected = this.heartRateMonitor.isConnected();
             const deviceName = this.heartRateMonitor.getDeviceName();
-            this.io.emit('hrm:updated', { connected, deviceName });
+            const batteryLevel = this.heartRateMonitor.getBatteryLevel();
+            this.io.emit('hrm:updated', { connected, deviceName, batteryLevel });
         } catch (error: any) {
             logger('Error emitting HRM status:', error);
         }

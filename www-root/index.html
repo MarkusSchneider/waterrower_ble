@@ -622,6 +622,7 @@
                 <div class="device-status" id="hrmStatusMain">
                     <span class="device-status-icon">❤️</span>
                     <span id="hrmStatusText" class="state-indicator state-disconnected">Disconnected</span>
+                    <span id="hrmBattery" style="color: #666;"> </span>
                 </div>
             </div>
 
@@ -972,6 +973,7 @@
             const btnConnect = document.getElementById('btnConnectHRM');
             const btnDisconnect = document.getElementById('btnDisconnectHRM');
             const hrmStatusText = document.getElementById('hrmStatusText');
+            const hrmBattery = document.getElementById('hrmBattery');
 
             if (data.connected) {
                 hrmStatus.textContent = `Connected (${data.deviceName || 'HRM'})`;
@@ -980,6 +982,25 @@
                 btnDisconnect.classList.remove('hidden');
                 hrmStatusText.textContent = 'Connected';
                 hrmStatusText.className = 'state-indicator state-connected';
+
+                // Update battery level
+                if (data.batteryLevel !== null && data.batteryLevel !== undefined) {
+                    const batteryPercent = data.batteryLevel;
+                    let batteryColor = '#10b981'; // green
+                    let batteryIcon = '🔋';
+
+                    if (batteryPercent <= 20) {
+                        batteryColor = '#ef4444'; // red
+                        batteryIcon = '🪫';
+                    } else if (batteryPercent <= 40) {
+                        batteryColor = '#f59e0b'; // orange
+                    }
+
+                    hrmBattery.innerHTML = `<span style="color: ${batteryColor}; font-weight: 600;">${batteryIcon} ${batteryPercent}%</span>`;
+                } else {
+                    hrmBattery.textContent = 'N/A';
+                    hrmBattery.style.color = '#666';
+                }
             } else {
                 hrmStatus.textContent = 'Disconnected';
                 hrmStatus.className = 'state-indicator state-idle';
@@ -987,6 +1008,8 @@
                 btnDisconnect.classList.add('hidden');
                 hrmStatusText.textContent = 'Disconnected';
                 hrmStatusText.className = 'state-indicator state-disconnected';
+                hrmBattery.textContent = '--';
+                hrmBattery.style.color = '#666';
             }
         }
 
