@@ -98,29 +98,34 @@ function createWaterRower(port?: string): WaterRower {
 }
 
 function main(): void {
-  // Check for command line arguments for legacy modes
-  const mode = process.argv[2];
-  startWebServer();
+  try {
+    // Check for command line arguments for legacy modes
+    // const mode = process.argv[2];
+    startWebServer();
 
-  // if (mode === '-w') {
-  //   startWorkout(createWaterRower());
-  //   return;
-  // }
+    // if (mode === '-w') {
+    //   startWorkout(createWaterRower());
+    //   return;
+    // }
 
-  // if (mode === '-r') {
-  //   startRecording(createWaterRower());
-  //   return;
-  // }
+    // if (mode === '-r') {
+    //   startRecording(createWaterRower());
+    //   return;
+    // }
 
-  // if (mode === '-p') {
-  //   replayRecording(createWaterRower());
-  //   return;
-  // }
+    // if (mode === '-p') {
+    //   replayRecording(createWaterRower());
+    //   return;
+    // }
 
-  // if (mode === '-ble') {
-  //   startBLE(createWaterRower());
-  //   return;
-  // }
+    // if (mode === '-ble') {
+    //   startBLE(createWaterRower());
+    //   return;
+    // }
+  } catch (error) {
+    console.log('Fatal error in main:', error);
+    exit(1);
+  }
 }
 
 async function startWebServer(): Promise<void> {
@@ -133,7 +138,7 @@ async function startWebServer(): Promise<void> {
   const savedHRMDevice = configManager.getHRMDevice();
 
   // Initialize heart rate monitor (optional) - will auto-connect in background if device is saved
-  const heartRateMonitor = new HeartRateMonitor(savedHRMDevice?.id);
+  const heartRateMonitor = new HeartRateMonitor();
 
   // Initialize WaterRower
   const waterRower = createWaterRower(configManager.getWaterRowerPort());
@@ -147,12 +152,16 @@ async function startWebServer(): Promise<void> {
 
   webServer.start();
   waterRower.connectSerial();
+  await heartRateMonitor.reconnectAsync(savedHRMDevice?.id);
 
   // Handle graceful shutdown
   const shutdown = async (signal: string) => {
     logger(`Received ${signal}, shutting down gracefully...`);
     try {
       await webServer.shutdown();
+      await heartRateMonitor.disconnectAsync();
+      waterRower.close();
+
       logger('Server shutdown complete');
       process.exit(0);
     } catch (error) {
@@ -165,9 +174,4 @@ async function startWebServer(): Promise<void> {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error);
-  exit(1);
-}
+main();

@@ -4,8 +4,8 @@ import express, {
     Request,
     Response,
 } from 'express';
-import { createServer } from 'http';
-import { createServer as createHttpsServer } from 'https';
+import { createServer as createHttpServer, Server as HttpServer } from 'http';
+import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
 import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
 import { networkInterfaces } from 'os';
@@ -38,8 +38,7 @@ export interface WebServerOptions {
 
 export class WebServer {
     private app: express.Application;
-    private httpServer: any;
-    private httpsServer: any;
+    private httpServer: HttpServer | HttpsServer | null = null;
     private io: SocketIOServer;
     private waterRower: WaterRower;
     private heartRateMonitor: HeartRateMonitor;
@@ -57,7 +56,6 @@ export class WebServer {
         this.fitGenerator = new FitFileGenerator(options.configManager);
 
         this.app = express();
-        this.httpServer = createServer(this.app);
 
         // Try to create HTTPS server if SSL is enabled and certificates exist
         const sslConfig = this.configManager.getSSLConfig();
@@ -67,16 +65,20 @@ export class WebServer {
                     key: readFileSync(sslConfig.keyPath),
                     cert: readFileSync(sslConfig.certPath)
                 };
-                this.httpsServer = createHttpsServer(httpsOptions, this.app);
+                this.httpServer = createHttpsServer(httpsOptions, this.app);
                 logger('HTTPS server initialized');
             } catch (error) {
                 logger('Failed to create HTTPS server:', error);
-                this.httpsServer = null;
+                this.httpServer = null;
             }
+        }
+        if (this.httpServer == null) {
+            this.httpServer = createHttpServer(this.app);
+            logger('HTTP server initialized');
         }
 
         // Initialize Socket.IO on HTTPS if available, otherwise HTTP
-        this.io = new SocketIOServer(this.httpsServer || this.httpServer, {
+        this.io = new SocketIOServer(this.httpServer, {
             cors: {
                 origin: '*',
                 methods: ['GET', 'POST']
@@ -430,7 +432,7 @@ export class WebServer {
 
     private async handleDiscoverHRM(req: Request, res: Response): Promise<void> {
         try {
-            const devices = await this.heartRateMonitor.discover();
+            const devices = await this.heartRateMonitor.discoverAsync();
             res.status(200).json(devices);
         } catch (error) {
             console.error('Error discovering HRM devices:', error);
@@ -446,7 +448,7 @@ export class WebServer {
                 return;
             }
 
-            await this.heartRateMonitor.connect(deviceId);
+            await this.heartRateMonitor.connectAsync(deviceId);
 
             // Save device selection to config
             const name = deviceName || 'Unknown Device';
@@ -461,7 +463,7 @@ export class WebServer {
 
     private handleDisconnectHRM(req: Request, res: Response): void {
         try {
-            this.heartRateMonitor.disconnect();
+            this.heartRateMonitor.disconnectAsync();
             res.json({ success: true });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message || 'Failed to disconnect' });
@@ -564,6 +566,11 @@ export class WebServer {
     }
 
     public start(): void {
+        if (this.httpServer == null) {
+            logger('HTTP/HTTPS server is not initialized. Cannot start web server.');
+            return;
+        }
+
         const sslConfig = this.configManager.getSSLConfig();
 
         const port = sslConfig?.enabled === true ? sslConfig.port : this.configManager.getPort();
@@ -597,16 +604,9 @@ export class WebServer {
                 });
 
                 // Close HTTP server
-                this.httpServer.close(() => {
+                this.httpServer?.close(() => {
                     logger('HTTP server closed');
                 });
-
-                // Close HTTPS server if running
-                if (this.httpsServer) {
-                    this.httpsServer.close(() => {
-                        logger('HTTPS server closed');
-                    });
-                }
 
                 resolve();
             }, 500);

@@ -205,7 +205,7 @@ export class TrainingSession extends EventEmitter {
         this.subscriptions = [];
 
         this.waterRower.close();
-        this.heartRateMonitor.disconnect();
+        this.heartRateMonitor.disconnectAsync();
 
         this.collectDataPoint(true);
         this.emit(TrainingSessionEvents.STOPPED, this.getSummary());
