@@ -7,6 +7,7 @@
             "runtimeArgs": [
                 "-r",
                 "ts-node/register",
+                "--trace-warnings"
             ],
             "args": [
                 "${workspaceFolder}/src/main.ts",

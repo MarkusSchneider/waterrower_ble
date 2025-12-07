@@ -149,10 +149,6 @@ export class WebServer {
         });
 
         // Listen to HeartRateMonitor lifecycle events
-        this.heartRateMonitor.on(HeartRateMonitorEvents.READY, () => {
-            logger('HeartRateMonitor ready');
-        });
-
         this.heartRateMonitor.on(HeartRateMonitorEvents.CONNECTED, () => {
             logger('HeartRateMonitor connected');
             this.emitHRMStatus();

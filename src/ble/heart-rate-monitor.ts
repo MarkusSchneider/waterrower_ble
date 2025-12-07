@@ -3,13 +3,18 @@ import { EventEmitter } from 'events';
 import { Subject } from 'rxjs';
 
 import noble, { Peripheral, Characteristic } from '@stoprocent/noble';
+import { HeartRateMonitorEvents } from './heart-rate-monitor-events';
 
 const logger = debug('HR_MONITOR');
 
 // Standard Bluetooth Heart Rate Service and Characteristic UUIDs
 const HEART_RATE_SERVICE_UUID = '180d';
 const HEART_RATE_MEASUREMENT_UUID = '2a37';
+const DISCOVERTY_TIMEOUT = 10000;
 
+// Generic Access Service and Device Name Characteristic UUIDs
+const GENERIC_ACCESS_SERVICE_UUID = '1800';
+const DEVICE_NAME_CHARACTERISTIC_UUID = '2a00';
 export interface HeartRateData {
     time: number;
     heartRate: number;
@@ -19,12 +24,14 @@ export class HeartRateMonitor extends EventEmitter {
     private peripheral?: Peripheral;
     private characteristic?: Characteristic;
     private connected = false;
+    private deviceName = '';
 
     // Subject for publishing heart rate data
     public heartRate$ = new Subject<HeartRateData>();
 
     constructor() {
         super();
+        noble.setMaxListeners(20);
     }
 
     public async reconnectAsync(savedDeviceId: string | undefined): Promise<void> {
@@ -38,9 +45,13 @@ export class HeartRateMonitor extends EventEmitter {
         const maxAttempts = 30;
         for (let attempts = 0; attempts < maxAttempts; attempts++) {
             try {
-                await this.connectAsync(savedDeviceId, 30000); // 30 seconds timeout
+                await Promise.race([
+                    this.connectAsync(savedDeviceId),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 30000))
+                ]);
+
                 logger('Successfully connected to saved HRM device in background');
-                return; // Exit on successful connection
+                return;
             } catch (err: any) {
                 logger(`Background connection attempt ${attempts + 1} to HRM failed: ${err.message}`);
                 // Continue to next attempt
@@ -51,38 +62,35 @@ export class HeartRateMonitor extends EventEmitter {
     }
 
     public async discoverAsync(): Promise<Array<{ id: string; name: string | undefined }>> {
-        await noble.waitForPoweredOnAsync();
-        logger('Noble powered on, starting discovery...');
 
         const devices: Array<{ id: string; name: string | undefined }> = [];
-        const discoveryTimeout = 10000;
-        const startTime = Date.now();
-
-        // Start scanning for heart rate devices
-        await noble.startScanningAsync([HEART_RATE_SERVICE_UUID], false);
-
-        for await (const peripheral of noble.discoverAsync()) {
-            const name = peripheral.advertisement.localName;
-            const hasHeartRateService = peripheral.advertisement.serviceUuids?.includes(HEART_RATE_SERVICE_UUID);
-
-            if (!devices.find(d => d.id === peripheral.id)) {
+        const handleDiscovery = (peripheral: Peripheral) => {
+            if (devices.find(d => d.id === peripheral.id) == null) {
+                const name = peripheral.advertisement.localName;
                 devices.push({ id: peripheral.id, name });
-                logger(`Discovered device: ${name} - HR Service: ${hasHeartRateService}`);
-            }
 
-            // Check timeout
-            if (Date.now() - startTime >= discoveryTimeout) {
-                break;
+                logger(`Discovered device: ${name}`);
             }
+        };
+
+        try {
+            await noble.waitForPoweredOnAsync();
+            logger('Noble powered on, starting discovery...');
+
+            await noble.startScanningAsync([HEART_RATE_SERVICE_UUID], false);
+            noble.on('discover', handleDiscovery);
+
+            await new Promise(resolve => setTimeout(resolve, DISCOVERTY_TIMEOUT));
+        } finally {
+
+            await noble.stopScanningAsync();
         }
-
-        await noble.stopScanningAsync();
 
         logger(`Discovery complete. Found ${devices.length} devices.`);
         return devices;
     }
 
-    public async connectAsync(deviceId?: string, timeout = 30000): Promise<void> {
+    public async connectAsync(deviceId?: string): Promise<void> {
         if (deviceId == null) {
             return;
         }
@@ -92,31 +100,18 @@ export class HeartRateMonitor extends EventEmitter {
             return;
         }
 
-        // Create a promise that rejects after timeout
-        const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Heart rate monitor connection timeout')), timeout);
-        });
-
-        // Race between connection and timeout
-        await Promise.race([
-            this.connectToDeviceAsync(deviceId),
-            timeoutPromise
-        ]);
-    }
-
-    private async connectToDeviceAsync(deviceId: string): Promise<void> {
         await noble.waitForPoweredOnAsync();
         logger(`Connecting directly to device: ${deviceId}`);
 
         // Direct connection without scanning
         const peripheral = await noble.connectAsync(deviceId);
-        await this.connectToPeripheralAsync(peripheral);
+        await this.connectToPeripheralAsync(deviceId, peripheral);
     }
 
-    private async connectToPeripheralAsync(peripheral: Peripheral): Promise<void> {
+    private async connectToPeripheralAsync(deviceId: string, peripheral: Peripheral): Promise<void> {
         this.peripheral = peripheral;
 
-        logger(`Connecting to ${peripheral.advertisement.localName}...`);
+        logger(`Connecting to ${deviceId}...`);
 
         // Setup disconnect handler
         peripheral.once('disconnect', () => {
@@ -124,15 +119,27 @@ export class HeartRateMonitor extends EventEmitter {
             this.connected = false;
             this.peripheral = undefined;
             this.characteristic = undefined;
-            this.emit('disconnected');
+            this.emit(HeartRateMonitorEvents.DISCONNECTED);
         });
-
-        // Connect to peripheral
-        await peripheral.connectAsync();
-        logger('Connected! Discovering services and characteristics...');
 
         // Discover all services and characteristics at once (following peripheral-explorer pattern)
         const { services } = await peripheral.discoverAllServicesAndCharacteristicsAsync();
+
+        // Try to read device name from Generic Access Service if not available from advertisement
+        const gapService = services.find(s => s.uuid === GENERIC_ACCESS_SERVICE_UUID);
+        if (gapService) {
+            const deviceNameChar = gapService.characteristics.find(c => c.uuid === DEVICE_NAME_CHARACTERISTIC_UUID);
+            if (deviceNameChar) {
+                try {
+                    const nameBuffer = await deviceNameChar.readAsync();
+                    this.deviceName = nameBuffer.toString('utf8');
+                    logger(`Read device name from characteristic: ${this.deviceName}`);
+                } catch (err) {
+                    this.deviceName = 'Unknown Device';
+                    logger(`Failed to read device name from characteristic: ${err}`);
+                }
+            }
+        }
 
         // Find heart rate service
         const hrService = services.find(s => s.uuid === HEART_RATE_SERVICE_UUID);
@@ -158,7 +165,7 @@ export class HeartRateMonitor extends EventEmitter {
 
         logger('Successfully subscribed to heart rate data');
         this.connected = true;
-        this.emit('connected');
+        this.emit(HeartRateMonitorEvents.CONNECTED);
     }
 
     public async disconnectAsync(): Promise<void> {
@@ -192,12 +199,9 @@ export class HeartRateMonitor extends EventEmitter {
 
         // Publish to subject
         this.heartRate$.next({ time: Date.now(), heartRate });
-
-        // Also emit as event for backward compatibility
-        this.emit('heartrate', heartRate);
     }
 
     public getDeviceName(): string {
-        return this.peripheral?.advertisement.localName ?? 'Unknown Device';
+        return this.deviceName;
     }
 }
