@@ -79,7 +79,7 @@ export class FitFileGenerator {
         dataPoints.forEach((point) => {
             const recordMessage: any = {
                 timestamp: point.timestamp,
-                distance: point.distance ? Math.round(point.distance * 100) : undefined, // cm
+                distance: point.distance ? Math.round(point.distance * 1000) : undefined, // mm
                 cadence: point.strokeRate, // Stroke rate as cadence
             };
 
@@ -105,7 +105,7 @@ export class FitFileGenerator {
             startTime: summary.startTime,
             totalElapsedTime: summary.duration, // seconds
             totalTimerTime: summary.duration,
-            totalDistance: Math.round(summary.distance * 100), // cm
+            totalDistance: Math.round(summary.distance * 1000), // mm
             totalCalories: Math.round(summary.totalCalories ?? 0),
             avgHeartRate: summary.avgHeartRate ? Math.round(summary.avgHeartRate) : undefined,
             maxHeartRate: summary.maxHeartRate ? Math.round(summary.maxHeartRate) : undefined,
@@ -113,7 +113,7 @@ export class FitFileGenerator {
             maxPower: summary.maxPower ? Math.round(summary.maxPower) : undefined,
             totalStrokes: summary.totalStrokes,
             avgStrokeDistance: summary.totalStrokes && summary.distance
-                ? Math.round((summary.distance / summary.totalStrokes) * 100) // cm
+                ? Math.round((summary.distance / summary.totalStrokes) * 1000) // mm
                 : undefined,
             sport: SPORT,
             subSport: SUB_SPORT,
@@ -128,7 +128,7 @@ export class FitFileGenerator {
             startTime: summary.startTime,
             totalElapsedTime: summary.duration,
             totalTimerTime: summary.duration,
-            totalDistance: Math.round(summary.distance * 100), // cm
+            totalDistance: Math.round(summary.distance * 1000), // mm
             totalCalories: Math.round(summary.totalCalories ?? 0),
             avgHeartRate: summary.avgHeartRate ? Math.round(summary.avgHeartRate) : undefined,
             maxHeartRate: summary.maxHeartRate ? Math.round(summary.maxHeartRate) : undefined,
