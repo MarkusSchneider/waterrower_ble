@@ -226,7 +226,7 @@ export class TrainingSession extends EventEmitter {
             endTime: this.endTime,
             state: this.state,
             duration,
-            distance: (lastPoint?.distance ?? 0) / 1000,
+            distance: (lastPoint?.distance ?? 0),
             avgHeartRate: heartRates.length > 0 ? heartRates.reduce((a, b) => a + b, 0) / heartRates.length : undefined,
             maxHeartRate: heartRates.length > 0 ? Math.max(...heartRates) : undefined,
             avgPower: powers.length > 0 ? powers.reduce((a, b) => a + b, 0) / powers.length : undefined,
