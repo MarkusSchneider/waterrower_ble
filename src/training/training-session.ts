@@ -145,9 +145,9 @@ export class TrainingSession extends EventEmitter {
         // Emit datapoints every second
         const intervalSubscription = interval(1000)
             .subscribe({
-                next: (elapsedSeconds) => {
+                next: (_elapsedSeconds) => {
                     if (this.state === SessionState.ACTIVE) {
-                        this.collectDataPoint(elapsedSeconds % 60 === 0);
+                        this.collectDataPoint(true);
                     }
                 },
                 error: (err) => {
