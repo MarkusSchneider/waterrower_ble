@@ -18,7 +18,7 @@ export interface TrainingDataPoint {
     power?: number; // watts
     calories?: number;
     heartRate?: number; // bpm
-    speed?: number; // m/s
+    speed?: number; // mm/s
     totalStrokes?: number;
 }
 
@@ -119,10 +119,12 @@ export class TrainingSession extends EventEmitter {
                             break;
                         case 'm_s_total':
                             const speedCmPerSec = dataPoint.value;
-                            this.currentData.speed = speedCmPerSec / 100; // Convert cm/s to m/s
+                            this.currentData.speed = speedCmPerSec * 10; // Convert cm/s to mm/s
                             // Calculate power using rowing formula: Power (watts) = 2.8 × speed³
-                            if (this.currentData.speed > 0) {
-                                this.currentData.power = 2.8 * Math.pow(this.currentData.speed, 3);
+                            // Convert mm/s to m/s for power calculation
+                            const speedMs = this.currentData.speed / 1000;
+                            if (speedMs > 0) {
+                                this.currentData.power = 2.8 * Math.pow(speedMs, 3);
                             }
                             break;
                     }

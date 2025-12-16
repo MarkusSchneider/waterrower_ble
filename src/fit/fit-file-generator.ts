@@ -90,7 +90,7 @@ export class FitFileGenerator {
                 recordMessage.power = Math.round(point.power);
             }
             if (point.speed) {
-                recordMessage.speed = Math.round(point.speed * 1000); // mm/s
+                recordMessage.speed = Math.round(point.speed); // already in mm/s
             }
             if (point.calories) {
                 recordMessage.calories = Math.round(point.calories);
@@ -99,27 +99,29 @@ export class FitFileGenerator {
             encoder.onMesg(Profile.MesgNum.RECORD, recordMessage);
         });
 
-        // Lap message
-        encoder.onMesg(Profile.MesgNum.LAP, {
-            timestamp: summary.endTime ?? summary.startTime,
-            startTime: summary.startTime,
-            totalElapsedTime: summary.duration, // seconds
-            totalTimerTime: summary.duration,
-            totalDistance: Math.round(summary.distance * 1000), // mm
-            totalCalories: Math.round(summary.totalCalories ?? 0),
-            avgHeartRate: summary.avgHeartRate ? Math.round(summary.avgHeartRate) : undefined,
-            maxHeartRate: summary.maxHeartRate ? Math.round(summary.maxHeartRate) : undefined,
-            avgPower: summary.avgPower ? Math.round(summary.avgPower) : undefined,
-            maxPower: summary.maxPower ? Math.round(summary.maxPower) : undefined,
-            totalStrokes: summary.totalStrokes,
-            avgStrokeDistance: summary.totalStrokes && summary.distance
-                ? Math.round((summary.distance / summary.totalStrokes) * 1000) // mm
-                : undefined,
-            sport: SPORT,
-            subSport: SUB_SPORT,
-            lapTrigger: FitLapTrigger.MANUAL,
-            event: FitEvent.LAP,
-            eventType: FitEventType.STOP,
+        // Create 500m laps with calculated values
+        const laps = this.createLapsFromDataPoints(dataPoints, 500);
+        logger(`Generated ${laps.length} laps (500m intervals)`);
+
+        laps.forEach((lap) => {
+            encoder.onMesg(Profile.MesgNum.LAP, {
+                timestamp: lap.endTime,
+                startTime: lap.startTime,
+                totalElapsedTime: lap.duration,
+                totalTimerTime: lap.duration,
+                totalDistance: Math.round(lap.distance * 1000), // mm
+                totalCalories: lap.calories ? Math.round(lap.calories) : undefined,
+                avgHeartRate: lap.avgHeartRate ? Math.round(lap.avgHeartRate) : undefined,
+                maxHeartRate: lap.maxHeartRate ? Math.round(lap.maxHeartRate) : undefined,
+                avgPower: lap.avgPower ? Math.round(lap.avgPower) : undefined,
+                maxPower: lap.maxPower ? Math.round(lap.maxPower) : undefined,
+                totalStrokes: lap.totalStrokes,
+                sport: SPORT,
+                subSport: SUB_SPORT,
+                lapTrigger: FitLapTrigger.DISTANCE,
+                event: FitEvent.LAP,
+                eventType: FitEventType.STOP,
+            });
         });
 
         // Session message
@@ -138,7 +140,7 @@ export class FitFileGenerator {
             sport: SPORT,
             subSport: SUB_SPORT,
             firstLapIndex: 0,
-            numLaps: 1,
+            numLaps: laps.length,
             event: FitEvent.SESSION,
             eventType: FitEventType.STOP,
             trigger: FitLapTrigger.MANUAL,
@@ -166,6 +168,114 @@ export class FitFileGenerator {
         logger(`FIT file saved to: ${fullPath}`);
 
         return fullPath;
+    }
+
+    /**
+     * Create laps from data points based on distance intervals
+     * @param dataPoints - Array of training data points
+     * @param lapDistanceMeters - Distance interval for each lap in meters (e.g., 500)
+     * @returns Array of lap statistics
+     */
+    private createLapsFromDataPoints(
+        dataPoints: TrainingDataPoint[],
+        lapDistanceMeters: number
+    ) {
+        const laps: Array<{
+            startTime: Date;
+            endTime: Date;
+            duration: number;
+            distance: number;
+            calories?: number;
+            avgHeartRate?: number;
+            maxHeartRate?: number;
+            avgPower?: number;
+            maxPower?: number;
+            totalStrokes?: number;
+        }> = [];
+
+        if (dataPoints.length === 0) {
+            return laps;
+        }
+
+        let lapStartIndex = 0;
+        let currentLapThreshold = lapDistanceMeters;
+
+        for (let i = 0; i < dataPoints.length; i++) {
+            const point = dataPoints[i];
+
+            // Check if we've crossed the lap distance threshold
+            if (point.distance && point.distance >= currentLapThreshold) {
+                // Get all points from lap start to current point (inclusive)
+                const lapPoints = dataPoints.slice(lapStartIndex, i + 1);
+                const lapStats = this.calculateLapStatistics(lapPoints);
+                laps.push(lapStats);
+
+                // Prepare for next lap
+                lapStartIndex = i + 1;
+                currentLapThreshold += lapDistanceMeters;
+            }
+        }
+
+        // Handle remaining points as final (potentially partial) lap
+        if (lapStartIndex < dataPoints.length) {
+            const lapPoints = dataPoints.slice(lapStartIndex);
+            const lapStats = this.calculateLapStatistics(lapPoints);
+            laps.push(lapStats);
+        }
+
+        return laps;
+    }
+
+    /**
+     * Calculate statistics for a lap from its data points
+     */
+    private calculateLapStatistics(points: TrainingDataPoint[]) {
+        if (points.length === 0) {
+            throw new Error('Cannot calculate lap statistics from empty points array');
+        }
+
+        const firstPoint = points[0];
+        const lastPoint = points[points.length - 1];
+
+        // Calculate duration in seconds
+        const duration = (lastPoint.timestamp.getTime() - firstPoint.timestamp.getTime()) / 1000;
+
+        // Calculate distance for this lap (difference between first and last point)
+        const startDistance = firstPoint.distance || 0;
+        const endDistance = lastPoint.distance || 0;
+        const lapDistance = endDistance - startDistance;
+
+        // Heart rate statistics
+        const hrValues = points.filter(p => p.heartRate && p.heartRate > 0).map(p => p.heartRate!);
+        const avgHeartRate = hrValues.length > 0 ? hrValues.reduce((sum, hr) => sum + hr, 0) / hrValues.length : undefined;
+        const maxHeartRate = hrValues.length > 0 ? Math.max(...hrValues) : undefined;
+
+        // Power statistics
+        const powerValues = points.filter(p => p.power && p.power > 0).map(p => p.power!);
+        const avgPower = powerValues.length > 0 ? powerValues.reduce((sum, p) => sum + p, 0) / powerValues.length : undefined;
+        const maxPower = powerValues.length > 0 ? Math.max(...powerValues) : undefined;
+
+        // Calories and strokes (difference between first and last)
+        const startCalories = firstPoint.calories || 0;
+        const endCalories = lastPoint.calories || 0;
+        const lapCalories = endCalories - startCalories;
+
+        const startStrokes = firstPoint.totalStrokes || 0;
+        const endStrokes = lastPoint.totalStrokes || 0;
+        const lapStrokes = endStrokes - startStrokes;
+
+        return {
+            startTime: firstPoint.timestamp,
+            endTime: lastPoint.timestamp,
+            duration,
+            distance: lapDistance,
+            calories: lapCalories,
+            avgHeartRate,
+            maxHeartRate,
+            avgPower,
+            maxPower,
+            totalStrokes: lapStrokes,
+        };
     }
 
     /**
