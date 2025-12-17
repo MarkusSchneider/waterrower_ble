@@ -40,6 +40,8 @@ export interface SessionSummary {
     maxHeartRate?: number;
     avgPower?: number;
     maxPower?: number;
+    avgSpeed?: number; // mm/s
+    maxSpeed?: number; // mm/s
     totalCalories?: number;
     totalStrokes?: number;
     dataPoints: number; // count
@@ -221,6 +223,7 @@ export class TrainingSession extends EventEmitter {
 
         const heartRates = this.sessionData.map(dp => dp.heartRate).filter(hr => hr !== undefined) as number[];
         const powers = this.sessionData.map(dp => dp.power).filter(p => p !== undefined) as number[];
+        const speeds = this.sessionData.map(dp => dp.speed).filter(s => s !== undefined) as number[];
 
         return {
             id: this.sessionId,
@@ -233,6 +236,8 @@ export class TrainingSession extends EventEmitter {
             maxHeartRate: heartRates.length > 0 ? Math.max(...heartRates) : undefined,
             avgPower: powers.length > 0 ? powers.reduce((a, b) => a + b, 0) / powers.length : undefined,
             maxPower: powers.length > 0 ? Math.max(...powers) : undefined,
+            avgSpeed: speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : undefined,
+            maxSpeed: speeds.length > 0 ? Math.max(...speeds) : undefined,
             totalCalories: lastPoint?.calories,
             totalStrokes: lastPoint?.totalStrokes,
             dataPoints: this.sessionData.length
