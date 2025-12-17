@@ -648,6 +648,13 @@
                     </div>
                 </div>
                 <div class="metric">
+                    <div class="metric-label">Speed</div>
+                    <div class="metric-value">
+                        <span id="speedValue">0.0</span>
+                        <span class="metric-unit">km/h</span>
+                    </div>
+                </div>
+                <div class="metric">
                     <div class="metric-label">Power</div>
                     <div class="metric-value">
                         <span id="powerValue">0</span>
@@ -719,6 +726,9 @@
                     document.getElementById('timeValue').textContent = formatTime(dataPoint.elapsedTime);
                     document.getElementById('distanceValue').textContent = Math.round(dataPoint.distance || 0);
                     document.getElementById('strokeRateValue').textContent = Math.round(dataPoint.strokeRate || 0);
+                    // Convert speed from mm/s to km/h (mm/s * 3.6 / 1000)
+                    const speedKmh = (dataPoint.speed || 0) * 3.6 / 1000;
+                    document.getElementById('speedValue').textContent = speedKmh.toFixed(1);
                     document.getElementById('powerValue').textContent = Math.round(dataPoint.power || 0);
                     document.getElementById('heartRateValue').textContent = dataPoint.heartRate ? Math.round(dataPoint.heartRate) : '--';
                     document.getElementById('caloriesValue').textContent = Math.round(dataPoint.calories || 0);
