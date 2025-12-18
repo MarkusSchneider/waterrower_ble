@@ -26,7 +26,7 @@ export interface AppConfig {
         port: number;
     };
     sessionMode?: SessionMode;
-    recordingFile?: string;
+    recordingFile: string;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -42,7 +42,7 @@ const DEFAULT_CONFIG: AppConfig = {
         port: 3443
     },
     sessionMode: 'training',
-    recordingFile: undefined
+    recordingFile: `recording_${new Date().toISOString()}.json`
 };
 
 export class ConfigManager {

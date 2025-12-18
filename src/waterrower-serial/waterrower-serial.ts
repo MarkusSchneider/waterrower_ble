@@ -3,7 +3,7 @@ import { SerialPort } from 'serialport';
 import { EventEmitter } from 'events';
 import * as path from 'path';
 
-import { appendFileSync, existsSync, fstat, readFileSync, readdirSync, unlinkSync } from 'fs';
+import { appendFileSync, existsSync, readFileSync, readdirSync, statSync, unlinkSync } from 'fs';
 import { AverageIntensityDisplayOptions, DisplaySetIntensity, Units } from './enums';
 import { DEFAULT_WATER_ROWER_OPTIONS, WaterRowerOptions } from './water-rower-options';
 import { ReadValue } from './read-value';
@@ -249,6 +249,9 @@ export class WaterRower extends EventEmitter {
             unlinkSync(filePath)
         }
 
+        // Keep only the last 5 recordings
+        this.cleanupOldRecordings(5);
+
         this.recordingSubscription = this.reads$
             .pipe(
                 filter(r => r.type != 'pulse'), //pulses are noisy
@@ -265,6 +268,34 @@ export class WaterRower extends EventEmitter {
 
     getRecordings(): Array<string> {
         return readdirSync(this.options.dataDirectory);
+    }
+
+    private cleanupOldRecordings(maxRecordings: number): void {
+        try {
+            const recordings = readdirSync(this.options.dataDirectory)
+                .map(file => ({
+                    name: file,
+                    path: path.join(this.options.dataDirectory, file),
+                }))
+                .filter(file => existsSync(file.path))
+                .map(file => ({
+                    name: file.name,
+                    path: file.path,
+                    mtime: statSync(file.path).mtime.getTime()
+                }))
+                .sort((a, b) => b.mtime - a.mtime); // Newest first
+
+            // Delete recordings beyond the max count
+            if (recordings.length >= maxRecordings) {
+                const toDelete = recordings.slice(maxRecordings - 1); // Keep space for the new one
+                toDelete.forEach(file => {
+                    logger(`Deleting old recording: ${file.name}`);
+                    unlinkSync(file.path);
+                });
+            }
+        } catch (error) {
+            logger('Error cleaning up old recordings:', error);
+        }
     }
 
     playRecording(name?: string): Promise<void> {
