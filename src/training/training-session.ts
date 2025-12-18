@@ -60,6 +60,10 @@ export class TrainingSession extends EventEmitter {
     private subscriptions: Subscription[] = [];
     private currentData: Partial<TrainingDataPoint> = {};
 
+    // Track previous values for speed calculation
+    private previousDistance: number = 0;
+    private previousTime: number = 0;
+
     constructor(
         private waterRower: WaterRower,
         private heartRateMonitor: HeartRateMonitor,
@@ -83,7 +87,7 @@ export class TrainingSession extends EventEmitter {
         }
 
         // Check if WaterRower is connected (required)
-        if (!this.waterRower.isConnected()) {
+        if (this.configManager.getSessionMode() !== 'replay' && !this.waterRower.isConnected()) {
             throw new Error('WaterRower is not connected. Please connect the WaterRower before starting a training session.');
         }
 
@@ -91,6 +95,8 @@ export class TrainingSession extends EventEmitter {
         this.state = SessionState.ACTIVE;
         this.startTime = new Date();
         this.sessionData = [];
+        this.previousDistance = 0;
+        this.previousTime = 0;
 
         // Reset WaterRower
         this.waterRower.reset();
@@ -112,6 +118,34 @@ export class TrainingSession extends EventEmitter {
                             const distance = dataPoint.value;
                             const currentDistance = this.currentData.distance ?? 0;
                             this.currentData.distance = distance > currentDistance ? distance : currentDistance;
+
+                            // Calculate speed from distance change
+                            const now = Date.now();
+                            if (this.previousTime > 0 && this.currentData.distance !== undefined) {
+                                const distanceChange = this.currentData.distance - this.previousDistance;
+                                const timeChange = (now - this.previousTime) / 1000; // Convert to seconds
+
+                                if (timeChange > 0) {
+                                    // Calculate speed in m/s
+                                    this.currentData.speed = distanceChange / timeChange;
+
+                                    // Calculate power using rowing formula: Power (watts) = 2.8 × speed³
+                                    if (this.currentData.speed > 0) {
+                                        this.currentData.power = 2.8 * Math.pow(this.currentData.speed, 3);
+                                    } else {
+                                        this.currentData.power = 0;
+                                    }
+                                }
+
+                                this.previousDistance = this.currentData.distance;
+                                this.previousTime = now;
+                            } else if (this.currentData.distance !== undefined) {
+                                // Initialize tracking on first distance reading
+                                this.previousDistance = this.currentData.distance;
+                                this.previousTime = now;
+                                this.currentData.speed = 0;
+                                this.currentData.power = 0;
+                            }
                             break;
                         case 'total_kcal':
                             const cal = dataPoint.value / 1000;
@@ -120,15 +154,6 @@ export class TrainingSession extends EventEmitter {
                             break;
                         case 'strokes_cnt':
                             this.currentData.totalStrokes = dataPoint.value;
-                            break;
-                        case 'm_s_total':
-                            const speedCmPerSec = dataPoint.value;
-                            this.currentData.speed = speedCmPerSec / 100; // Convert cm/s to m/s
-                            // Calculate power using rowing formula: Power (watts) = 2.8 × speed³
-                            const speedMs = this.currentData.speed;
-                            if (speedMs > 0) {
-                                this.currentData.power = 2.8 * Math.pow(speedMs, 3);
-                            }
                             break;
                     }
                 })

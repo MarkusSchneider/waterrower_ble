@@ -79,7 +79,7 @@ export class FitFileGenerator {
         dataPoints.forEach((point) => {
             const recordMessage: any = {
                 timestamp: point.timestamp,
-                distance: point.distance ? Math.round(point.distance * 100) : undefined, // scaled to 1/100 m (cm)
+                distance: point.distance ? Math.round(point.distance * 1000) : undefined, // scaled to 1/100 m (cm)
                 cadence: point.strokeRate, // Stroke rate as cadence
             };
 
@@ -109,7 +109,7 @@ export class FitFileGenerator {
                 startTime: lap.startTime,
                 totalElapsedTime: lap.duration,
                 totalTimerTime: lap.duration,
-                totalDistance: Math.round(lap.distance * 100), // scale 100: meters to 1/100 m (cm)
+                totalDistance: Math.round(lap.distance * 1000), // scale 100: meters to 1/100 m (cm)
                 totalCalories: lap.calories ? Math.round(lap.calories) : undefined,
                 avgHeartRate: lap.avgHeartRate ? Math.round(lap.avgHeartRate) : undefined,
                 maxHeartRate: lap.maxHeartRate ? Math.round(lap.maxHeartRate) : undefined,
@@ -132,7 +132,7 @@ export class FitFileGenerator {
             startTime: summary.startTime,
             totalElapsedTime: summary.duration,
             totalTimerTime: summary.duration,
-            totalDistance: Math.round(summary.distance * 100), // scale 100: meters to 1/100 m (cm)
+            totalDistance: Math.round(summary.distance * 1000), // scale 100: meters to 1/100 m (cm)
             totalCalories: Math.round(summary.totalCalories ?? 0),
             avgHeartRate: summary.avgHeartRate ? Math.round(summary.avgHeartRate) : undefined,
             maxHeartRate: summary.maxHeartRate ? Math.round(summary.maxHeartRate) : undefined,

@@ -267,7 +267,7 @@ export class WaterRower extends EventEmitter {
     }
 
     getRecordings(): Array<string> {
-        return readdirSync(this.options.dataDirectory);
+        return readdirSync(this.options.dataDirectory).filter(file => file.startsWith('session'));
     }
 
     private cleanupOldRecordings(maxRecordings: number): void {

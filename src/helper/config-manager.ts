@@ -25,8 +25,7 @@ export interface AppConfig {
         certPath: string;
         port: number;
     };
-    sessionMode?: SessionMode;
-    recordingFile: string;
+
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -41,13 +40,13 @@ const DEFAULT_CONFIG: AppConfig = {
         certPath: './data/certs/fullchain.pem',
         port: 3443
     },
-    sessionMode: 'training',
-    recordingFile: `recording_${new Date().toISOString()}.json`
 };
 
 export class ConfigManager {
     private configPath: string;
     private config: AppConfig;
+    private sessionMode: SessionMode = 'training';
+    private recordingFile: string = `recording_${new Date().toISOString()}.json`;
 
     constructor(configDir: string = './data') {
         // Ensure config directory exists
@@ -122,7 +121,7 @@ export class ConfigManager {
     public setWaterRowerPort(port: string): void {
         this.config.waterRowerPort = port;
         this.saveConfig();
-        logger(`WaterRower port saved: ${port}`);
+        logger(`WaterRower port saved: ${port} `);
     }
 
     public clearWaterRowerPort(): void {
@@ -138,7 +137,7 @@ export class ConfigManager {
     public setPort(port: number): void {
         this.config.port = port;
         this.saveConfig();
-        logger(`Port saved: ${port}`);
+        logger(`Port saved: ${port} `);
     }
 
     public getFitFilesDirectory(): string {
@@ -148,7 +147,7 @@ export class ConfigManager {
     public setFitFilesDirectory(directory: string): void {
         this.config.fitFilesDirectory = directory;
         this.saveConfig();
-        logger(`FIT files directory saved: ${directory}`);
+        logger(`FIT files directory saved: ${directory} `);
     }
 
     public getConfig(): AppConfig {
@@ -167,27 +166,25 @@ export class ConfigManager {
             port: port || this.config.ssl?.port || DEFAULT_CONFIG.ssl!.port
         };
         this.saveConfig();
-        logger(`SSL config updated: enabled=${enabled}`);
+        logger(`SSL config updated: enabled = ${enabled} `);
     }
 
     public getSessionMode(): SessionMode {
-        return this.config.sessionMode ?? 'training';
+        return this.sessionMode;
     }
 
     public setSessionMode(mode: SessionMode): void {
-        this.config.sessionMode = mode;
-        this.saveConfig();
-        logger(`Session mode set to: ${mode}`);
+        this.sessionMode = mode;
+        logger(`Session mode set to: ${mode} `);
     }
 
     public getRecordingFile(): string | undefined {
-        return this.config.recordingFile;
+        return this.recordingFile;
     }
 
     public setRecordingFile(filename: string): void {
-        this.config.recordingFile = filename;
-        this.saveConfig();
-        logger(`Recording file set to: ${filename}`);
+        this.recordingFile = filename;
+        logger(`Recording file set to: ${filename} `);
     }
 
     public clearAllConfig(): void {
