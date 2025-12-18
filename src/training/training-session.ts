@@ -246,13 +246,21 @@ export class TrainingSession extends EventEmitter {
         this.subscriptions.forEach(sub => sub.unsubscribe());
         this.subscriptions = [];
 
-        this.waterRower.close();
-        this.heartRateMonitor.disconnectAsync();
-
         this.collectDataPoint(true);
         this.emit(TrainingSessionEvents.STOPPED, this.getSummary());
 
         return this.sessionData;
+    }
+
+    public disconnectPeripherals(): void {
+        logger('Disconnecting training session');
+        if (this.state !== SessionState.FINISHED) {
+            return;
+        }
+
+        this.waterRower.reset();
+        this.waterRower.close();
+        this.heartRateMonitor.disconnectAsync();
     }
 
     public getSummary(): SessionSummary {

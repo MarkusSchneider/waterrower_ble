@@ -389,7 +389,7 @@ export class WebServer {
                 }
             }
 
-            this.waterRower.reset();
+            this.currentSession.disconnectPeripherals();
             res.json(response);
         } catch (error: any) {
             logger('Error stopping session:', error);
