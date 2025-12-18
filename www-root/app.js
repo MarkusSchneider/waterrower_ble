@@ -37,8 +37,7 @@ function setupSocketListeners() {
             document.getElementById('timeValue').textContent = formatTime(dataPoint.elapsedTime);
             document.getElementById('distanceValue').textContent = Math.round(dataPoint.distance || 0);
             document.getElementById('strokeRateValue').textContent = Math.round(dataPoint.strokeRate || 0);
-            // Convert speed from mm/s to km/h (mm/s * 3.6 / 1000)
-            const speedKmh = (dataPoint.speed || 0) * 3.6 / 1000;
+            const speedKmh = (dataPoint.speed || 0) * 3.6;
             document.getElementById('speedValue').textContent = speedKmh.toFixed(1);
             document.getElementById('powerValue').textContent = Math.round(dataPoint.power || 0);
             document.getElementById('heartRateValue').textContent = dataPoint.heartRate ? Math.round(dataPoint.heartRate) : '--';

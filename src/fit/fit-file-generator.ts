@@ -21,6 +21,8 @@ import {
 } from './fit-constants';
 
 const logger = debug('FIT_GENERATOR');
+// Note: Distance and Speed should NOT be manually scaled
+// The Garmin FIT SDK handles all scaling internally
 
 // FIT file constants
 const FILE_TYPE = FitFileType.ACTIVITY;
@@ -79,7 +81,7 @@ export class FitFileGenerator {
         dataPoints.forEach((point) => {
             const recordMessage: any = {
                 timestamp: point.timestamp,
-                distance: point.distance ? Math.round(point.distance * 1000) : undefined, // scaled to 1/100 m (cm)
+                distance: point.distance,
                 cadence: point.strokeRate, // Stroke rate as cadence
             };
 
@@ -90,7 +92,7 @@ export class FitFileGenerator {
                 recordMessage.power = Math.round(point.power);
             }
             if (point.speed) {
-                recordMessage.speed = Math.round(point.speed * 1000); // m/s to scaled (1/1000 m/s = mm/s)
+                recordMessage.speed = point.speed;
             }
             if (point.calories) {
                 recordMessage.calories = Math.round(point.calories);
@@ -109,14 +111,14 @@ export class FitFileGenerator {
                 startTime: lap.startTime,
                 totalElapsedTime: lap.duration,
                 totalTimerTime: lap.duration,
-                totalDistance: Math.round(lap.distance * 1000), // scale 100: meters to 1/100 m (cm)
+                totalDistance: lap.distance,
                 totalCalories: lap.calories ? Math.round(lap.calories) : undefined,
                 avgHeartRate: lap.avgHeartRate ? Math.round(lap.avgHeartRate) : undefined,
                 maxHeartRate: lap.maxHeartRate ? Math.round(lap.maxHeartRate) : undefined,
                 avgPower: lap.avgPower ? Math.round(lap.avgPower) : undefined,
                 maxPower: lap.maxPower ? Math.round(lap.maxPower) : undefined,
-                avgSpeed: lap.avgSpeed ? Math.round(lap.avgSpeed * 1000) : undefined, // scale 1000: m/s to 1/1000 m/s (mm/s)
-                maxSpeed: lap.maxSpeed ? Math.round(lap.maxSpeed * 1000) : undefined, // scale 1000: m/s to 1/1000 m/s (mm/s)
+                avgSpeed: lap.avgSpeed,
+                maxSpeed: lap.maxSpeed,
                 totalStrokes: lap.totalStrokes,
                 sport: SPORT,
                 subSport: SUB_SPORT,
@@ -132,14 +134,14 @@ export class FitFileGenerator {
             startTime: summary.startTime,
             totalElapsedTime: summary.duration,
             totalTimerTime: summary.duration,
-            totalDistance: Math.round(summary.distance * 1000), // scale 100: meters to 1/100 m (cm)
+            totalDistance: summary.distance,
             totalCalories: Math.round(summary.totalCalories ?? 0),
             avgHeartRate: summary.avgHeartRate ? Math.round(summary.avgHeartRate) : undefined,
             maxHeartRate: summary.maxHeartRate ? Math.round(summary.maxHeartRate) : undefined,
             avgPower: summary.avgPower ? Math.round(summary.avgPower) : undefined,
             maxPower: summary.maxPower ? Math.round(summary.maxPower) : undefined,
-            avgSpeed: summary.avgSpeed ? Math.round(summary.avgSpeed * 1000) : undefined, // scale 1000: m/s to 1/1000 m/s (mm/s)
-            maxSpeed: summary.maxSpeed ? Math.round(summary.maxSpeed * 1000) : undefined, // scale 1000: m/s to 1/1000 m/s (mm/s)
+            avgSpeed: summary.avgSpeed,
+            maxSpeed: summary.maxSpeed,
             totalStrokes: summary.totalStrokes,
             sport: SPORT,
             subSport: SUB_SPORT,
