@@ -80,6 +80,43 @@
                 </p>
             </div>
 
+            <!-- Session Mode Configuration -->
+            <div class="card">
+                <h2>🎯 Session Mode</h2>
+                <div id="sessionModeAlert" class="hidden"></div>
+                <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
+                    Choose how your training session will operate:
+                </p>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="sessionMode" value="training" onchange="updateSessionMode()"
+                            style="margin-right: 8px;">
+                        <strong>Training</strong> - Standard rowing session with WaterRower
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="sessionMode" value="record" onchange="updateSessionMode()"
+                            style="margin-right: 8px;">
+                        <strong>Record</strong> - Record WaterRower data for later replay
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="sessionMode" value="replay" onchange="updateSessionMode()"
+                            style="margin-right: 8px;">
+                        <strong>Replay</strong> - Simulate a session from recorded data
+                    </label>
+                </div>
+                <div id="replayFileSelection" class="hidden" style="margin-top: 15px;">
+                    <label for="recordingFileSelect"
+                        style="display: block; margin-bottom: 5px; font-weight: bold;">Select Recording:</label>
+                    <select id="recordingFileSelect" onchange="updateRecordingFile()"
+                        style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px; margin-bottom: 10px;">
+                        <option value="">-- Choose a recording --</option>
+                    </select>
+                    <button class="btn-secondary" onclick="refreshRecordings()" style="width: 100%;">
+                        🔄 Refresh Recordings
+                    </button>
+                </div>
+            </div>
+
             <!-- FIT Files Download -->
             <div class="card">
                 <h2>📁 Saved FIT Files</h2>

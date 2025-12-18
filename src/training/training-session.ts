@@ -7,6 +7,7 @@ import { HeartRateMonitor } from '../ble/heart-rate-monitor';
 import { DataPoint } from '../waterrower-serial/data-point';
 import { WaterRower } from '../waterrower-serial/waterrower-serial';
 import { TrainingSessionEvents } from './training-session-events';
+import { ConfigManager } from '../helper/config-manager';
 
 const logger = debug('TRAINING_SESSION');
 
@@ -18,7 +19,7 @@ export interface TrainingDataPoint {
     power?: number; // watts
     calories?: number;
     heartRate?: number; // bpm
-    speed?: number; // mm/s
+    speed?: number; // m/s
     totalStrokes?: number;
 }
 
@@ -40,6 +41,8 @@ export interface SessionSummary {
     maxHeartRate?: number;
     avgPower?: number;
     maxPower?: number;
+    avgSpeed?: number; // m/s
+    maxSpeed?: number; // m/s
     totalCalories?: number;
     totalStrokes?: number;
     dataPoints: number; // count
@@ -59,7 +62,8 @@ export class TrainingSession extends EventEmitter {
 
     constructor(
         private waterRower: WaterRower,
-        private heartRateMonitor: HeartRateMonitor
+        private heartRateMonitor: HeartRateMonitor,
+        private configManager: ConfigManager
     ) {
         super();
         this.sessionId = `session_${Date.now()}`;
@@ -119,10 +123,9 @@ export class TrainingSession extends EventEmitter {
                             break;
                         case 'm_s_total':
                             const speedCmPerSec = dataPoint.value;
-                            this.currentData.speed = speedCmPerSec * 10; // Convert cm/s to mm/s
+                            this.currentData.speed = speedCmPerSec / 100; // Convert cm/s to m/s
                             // Calculate power using rowing formula: Power (watts) = 2.8 × speed³
-                            // Convert mm/s to m/s for power calculation
-                            const speedMs = this.currentData.speed / 1000;
+                            const speedMs = this.currentData.speed;
                             if (speedMs > 0) {
                                 this.currentData.power = 2.8 * Math.pow(speedMs, 3);
                             }
@@ -159,6 +162,12 @@ export class TrainingSession extends EventEmitter {
             });
 
         this.subscriptions.push(intervalSubscription);
+
+        // Start recording if in recording mode
+        if (this.configManager.getSessionMode() === 'record') {
+            logger('Starting WaterRower recording');
+            this.waterRower.startRecording(this.sessionId);
+        }
 
         this.emit(TrainingSessionEvents.STARTED, { sessionId: this.sessionId, startTime: this.startTime });
 
@@ -202,6 +211,12 @@ export class TrainingSession extends EventEmitter {
         this.state = SessionState.FINISHED;
         this.endTime = new Date();
 
+        // Stop recording if in recording mode
+        if (this.configManager.getSessionMode() === 'record') {
+            logger('Stopping WaterRower recording');
+            this.waterRower.stopRecording();
+        }
+
         // Cleanup all subscriptions
         this.subscriptions.forEach(sub => sub.unsubscribe());
         this.subscriptions = [];
@@ -221,6 +236,7 @@ export class TrainingSession extends EventEmitter {
 
         const heartRates = this.sessionData.map(dp => dp.heartRate).filter(hr => hr !== undefined) as number[];
         const powers = this.sessionData.map(dp => dp.power).filter(p => p !== undefined) as number[];
+        const speeds = this.sessionData.map(dp => dp.speed).filter(s => s !== undefined) as number[];
 
         return {
             id: this.sessionId,
@@ -233,6 +249,8 @@ export class TrainingSession extends EventEmitter {
             maxHeartRate: heartRates.length > 0 ? Math.max(...heartRates) : undefined,
             avgPower: powers.length > 0 ? powers.reduce((a, b) => a + b, 0) / powers.length : undefined,
             maxPower: powers.length > 0 ? Math.max(...powers) : undefined,
+            avgSpeed: speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : undefined,
+            maxSpeed: speeds.length > 0 ? Math.max(...speeds) : undefined,
             totalCalories: lastPoint?.calories,
             totalStrokes: lastPoint?.totalStrokes,
             dataPoints: this.sessionData.length

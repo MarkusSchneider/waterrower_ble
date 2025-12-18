@@ -79,7 +79,7 @@ export class FitFileGenerator {
         dataPoints.forEach((point) => {
             const recordMessage: any = {
                 timestamp: point.timestamp,
-                distance: point.distance ? Math.round(point.distance * 1000) : undefined, // mm
+                distance: point.distance ? Math.round(point.distance * 100) : undefined, // scaled to 1/100 m (cm)
                 cadence: point.strokeRate, // Stroke rate as cadence
             };
 
@@ -90,7 +90,7 @@ export class FitFileGenerator {
                 recordMessage.power = Math.round(point.power);
             }
             if (point.speed) {
-                recordMessage.speed = Math.round(point.speed); // already in mm/s
+                recordMessage.speed = Math.round(point.speed * 1000); // m/s to scaled (1/1000 m/s = mm/s)
             }
             if (point.calories) {
                 recordMessage.calories = Math.round(point.calories);
@@ -109,12 +109,14 @@ export class FitFileGenerator {
                 startTime: lap.startTime,
                 totalElapsedTime: lap.duration,
                 totalTimerTime: lap.duration,
-                totalDistance: Math.round(lap.distance * 1000), // mm
+                totalDistance: Math.round(lap.distance * 100), // scale 100: meters to 1/100 m (cm)
                 totalCalories: lap.calories ? Math.round(lap.calories) : undefined,
                 avgHeartRate: lap.avgHeartRate ? Math.round(lap.avgHeartRate) : undefined,
                 maxHeartRate: lap.maxHeartRate ? Math.round(lap.maxHeartRate) : undefined,
                 avgPower: lap.avgPower ? Math.round(lap.avgPower) : undefined,
                 maxPower: lap.maxPower ? Math.round(lap.maxPower) : undefined,
+                avgSpeed: lap.avgSpeed ? Math.round(lap.avgSpeed * 1000) : undefined, // scale 1000: m/s to 1/1000 m/s (mm/s)
+                maxSpeed: lap.maxSpeed ? Math.round(lap.maxSpeed * 1000) : undefined, // scale 1000: m/s to 1/1000 m/s (mm/s)
                 totalStrokes: lap.totalStrokes,
                 sport: SPORT,
                 subSport: SUB_SPORT,
@@ -130,12 +132,14 @@ export class FitFileGenerator {
             startTime: summary.startTime,
             totalElapsedTime: summary.duration,
             totalTimerTime: summary.duration,
-            totalDistance: Math.round(summary.distance * 1000), // mm
+            totalDistance: Math.round(summary.distance * 100), // scale 100: meters to 1/100 m (cm)
             totalCalories: Math.round(summary.totalCalories ?? 0),
             avgHeartRate: summary.avgHeartRate ? Math.round(summary.avgHeartRate) : undefined,
             maxHeartRate: summary.maxHeartRate ? Math.round(summary.maxHeartRate) : undefined,
             avgPower: summary.avgPower ? Math.round(summary.avgPower) : undefined,
             maxPower: summary.maxPower ? Math.round(summary.maxPower) : undefined,
+            avgSpeed: summary.avgSpeed ? Math.round(summary.avgSpeed * 1000) : undefined, // scale 1000: m/s to 1/1000 m/s (mm/s)
+            maxSpeed: summary.maxSpeed ? Math.round(summary.maxSpeed * 1000) : undefined, // scale 1000: m/s to 1/1000 m/s (mm/s)
             totalStrokes: summary.totalStrokes,
             sport: SPORT,
             subSport: SUB_SPORT,
@@ -190,6 +194,8 @@ export class FitFileGenerator {
             maxHeartRate?: number;
             avgPower?: number;
             maxPower?: number;
+            avgSpeed?: number;
+            maxSpeed?: number;
             totalStrokes?: number;
         }> = [];
 
@@ -255,6 +261,11 @@ export class FitFileGenerator {
         const avgPower = powerValues.length > 0 ? powerValues.reduce((sum, p) => sum + p, 0) / powerValues.length : undefined;
         const maxPower = powerValues.length > 0 ? Math.max(...powerValues) : undefined;
 
+        // Speed statistics
+        const speedValues = points.filter(p => p.speed && p.speed > 0).map(p => p.speed!);
+        const avgSpeed = speedValues.length > 0 ? speedValues.reduce((sum, s) => sum + s, 0) / speedValues.length : undefined;
+        const maxSpeed = speedValues.length > 0 ? Math.max(...speedValues) : undefined;
+
         // Calories and strokes (difference between first and last)
         const startCalories = firstPoint.calories || 0;
         const endCalories = lastPoint.calories || 0;
@@ -274,6 +285,8 @@ export class FitFileGenerator {
             maxHeartRate,
             avgPower,
             maxPower,
+            avgSpeed,
+            maxSpeed,
             totalStrokes: lapStrokes,
         };
     }

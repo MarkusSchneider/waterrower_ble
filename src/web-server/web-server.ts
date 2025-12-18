@@ -216,6 +216,11 @@ export class WebServer {
         // WaterRower connection endpoints used by the web UI - delegate to handlers
         this.app.post('/api/waterrower/connect', (req, res) => { this.handleConnectWaterRower(req, res); });
 
+        // Session mode configuration endpoints
+        this.app.get('/api/session/mode', (req, res) => { this.handleGetSessionMode(req, res); });
+        this.app.post('/api/session/mode', (req, res) => { this.handleSetSessionMode(req, res); });
+        this.app.get('/api/recordings', (req, res) => { this.handleListRecordings(req, res); });
+
         // Serve the web UI
         this.app.get('/', (req, res) => { res.sendFile(path.resolve(path.join('www-root', 'index.html'))); });
     }
@@ -282,8 +287,11 @@ export class WebServer {
 
     private async handleStartSession(req: Request, res: Response): Promise<void> {
         try {
-            // Check if WaterRower is connected (required)
-            if (!this.waterRower.isConnected()) {
+            // Get session mode from config
+            const sessionMode = this.configManager.getSessionMode();
+
+            // Check if WaterRower is connected (required for training and record modes)
+            if ((sessionMode === 'training' || sessionMode === 'record') && !this.waterRower.isConnected()) {
                 res.status(400).json({
                     error: 'WaterRower is not connected. Please connect the WaterRower before starting a training session.'
                 });
@@ -297,21 +305,43 @@ export class WebServer {
                 return;
             }
 
-            logger('Starting new training session...');
+            logger(`Starting new training session in ${sessionMode} mode...`);
+
+            // Create session with configManager
             this.currentSession = new TrainingSession(
                 this.waterRower,
-                this.heartRateMonitor
+                this.heartRateMonitor,
+                this.configManager
             );
 
             // Setup event listeners for the new session
             this.setupSessionEventListeners(this.currentSession);
 
-            await this.currentSession.start();
+            // Handle replay mode
+            if (sessionMode === 'replay') {
+                const recordingFile = this.configManager.getRecordingFile();
+                if (!recordingFile) {
+                    res.status(400).json({
+                        error: 'No recording file selected for replay mode. Please select a recording in the configuration.'
+                    });
+                    return;
+                }
+
+                // Start the session first
+                await this.currentSession.start();
+
+                // Then start playback
+                logger(`Starting playback of recording: ${recordingFile}`);
+                await this.waterRower.playRecording(recordingFile);
+            } else {
+                await this.currentSession.start();
+            }
 
             res.json({
                 success: true,
                 sessionId: this.currentSession.getSessionId(),
-                message: 'Training session started'
+                mode: sessionMode,
+                message: `Training session started in ${sessionMode} mode`
             });
         } catch (error: any) {
             logger('Error starting session:', error);
@@ -538,6 +568,49 @@ export class WebServer {
             if (!res.headersSent) {
                 res.status(500).json({ error: error.message || 'Failed to download FIT file' });
             }
+        }
+    }
+
+    private handleGetSessionMode(req: Request, res: Response): void {
+        try {
+            const mode = this.configManager.getSessionMode();
+            const recordingFile = this.configManager.getRecordingFile();
+            res.json({ mode, recordingFile });
+        } catch (error: any) {
+            logger('Error getting session mode:', error);
+            res.status(500).json({ error: error.message || 'Failed to get session mode' });
+        }
+    }
+
+    private handleSetSessionMode(req: Request, res: Response): void {
+        try {
+            const { mode, recordingFile } = req.body;
+
+            if (!mode || !['training', 'record', 'replay'].includes(mode)) {
+                res.status(400).json({ error: 'Invalid mode. Must be training, record, or replay' });
+                return;
+            }
+
+            this.configManager.setSessionMode(mode);
+
+            if (mode === 'replay' && recordingFile) {
+                this.configManager.setRecordingFile(recordingFile);
+            }
+
+            res.json({ success: true, mode, recordingFile });
+        } catch (error: any) {
+            logger('Error setting session mode:', error);
+            res.status(500).json({ error: error.message || 'Failed to set session mode' });
+        }
+    }
+
+    private handleListRecordings(req: Request, res: Response): void {
+        try {
+            const recordings = this.waterRower.getRecordings();
+            res.json({ recordings });
+        } catch (error: any) {
+            logger('Error listing recordings:', error);
+            res.status(500).json({ error: error.message || 'Failed to list recordings' });
         }
     }
 

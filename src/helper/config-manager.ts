@@ -5,6 +5,8 @@ import * as path from 'path';
 
 const logger = debug('CONFIG_MANAGER');
 
+export type SessionMode = 'training' | 'record' | 'replay';
+
 export interface AppConfig {
     port: number;
     fitFilesDirectory: string;
@@ -23,6 +25,8 @@ export interface AppConfig {
         certPath: string;
         port: number;
     };
+    sessionMode?: SessionMode;
+    recordingFile: string;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -36,7 +40,9 @@ const DEFAULT_CONFIG: AppConfig = {
         keyPath: './data/certs/privkey.pem',
         certPath: './data/certs/fullchain.pem',
         port: 3443
-    }
+    },
+    sessionMode: 'training',
+    recordingFile: `recording_${new Date().toISOString()}.json`
 };
 
 export class ConfigManager {
@@ -162,6 +168,26 @@ export class ConfigManager {
         };
         this.saveConfig();
         logger(`SSL config updated: enabled=${enabled}`);
+    }
+
+    public getSessionMode(): SessionMode {
+        return this.config.sessionMode ?? 'training';
+    }
+
+    public setSessionMode(mode: SessionMode): void {
+        this.config.sessionMode = mode;
+        this.saveConfig();
+        logger(`Session mode set to: ${mode}`);
+    }
+
+    public getRecordingFile(): string | undefined {
+        return this.config.recordingFile;
+    }
+
+    public setRecordingFile(filename: string): void {
+        this.config.recordingFile = filename;
+        this.saveConfig();
+        logger(`Recording file set to: ${filename}`);
     }
 
     public clearAllConfig(): void {
