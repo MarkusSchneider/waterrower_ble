@@ -7,6 +7,7 @@ import { HeartRateMonitor } from '../ble/heart-rate-monitor';
 import { DataPoint } from '../waterrower-serial/data-point';
 import { WaterRower } from '../waterrower-serial/waterrower-serial';
 import { TrainingSessionEvents } from './training-session-events';
+import { ConfigManager } from '../helper/config-manager';
 
 const logger = debug('TRAINING_SESSION');
 
@@ -61,7 +62,8 @@ export class TrainingSession extends EventEmitter {
 
     constructor(
         private waterRower: WaterRower,
-        private heartRateMonitor: HeartRateMonitor
+        private heartRateMonitor: HeartRateMonitor,
+        private configManager: ConfigManager
     ) {
         super();
         this.sessionId = `session_${Date.now()}`;
@@ -161,6 +163,12 @@ export class TrainingSession extends EventEmitter {
 
         this.subscriptions.push(intervalSubscription);
 
+        // Start recording if in recording mode
+        if (this.configManager.getSessionMode() === 'record') {
+            logger('Starting WaterRower recording');
+            this.waterRower.startRecording(this.sessionId);
+        }
+
         this.emit(TrainingSessionEvents.STARTED, { sessionId: this.sessionId, startTime: this.startTime });
 
         // enable to replay recorded session
@@ -202,6 +210,12 @@ export class TrainingSession extends EventEmitter {
 
         this.state = SessionState.FINISHED;
         this.endTime = new Date();
+
+        // Stop recording if in recording mode
+        if (this.configManager.getSessionMode() === 'record') {
+            logger('Stopping WaterRower recording');
+            this.waterRower.stopRecording();
+        }
 
         // Cleanup all subscriptions
         this.subscriptions.forEach(sub => sub.unsubscribe());

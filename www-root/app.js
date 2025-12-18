@@ -8,6 +8,7 @@ let hrmDevices = [];
 document.addEventListener('DOMContentLoaded', () => {
     checkGarminStatus();
     setupSocketListeners();
+    loadSessionMode();
 });
 
 // Toggle configuration menu
@@ -526,6 +527,144 @@ function downloadFitFile(filename) {
 
 function showFitFilesAlert(type, message) {
     const alertDiv = document.getElementById('fitFilesAlert');
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.textContent = message;
+    alertDiv.classList.remove('hidden');
+    setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+}
+
+// Session Mode functions
+async function loadSessionMode() {
+    try {
+        const response = await fetch(`${API_BASE}/session/mode`);
+        const data = await response.json();
+
+        // Set the radio button for current mode
+        const radios = document.getElementsByName('sessionMode');
+        radios.forEach(radio => {
+            if (radio.value === data.mode) {
+                radio.checked = true;
+            }
+        });
+
+        // Show/hide replay file selection based on mode
+        updateReplayFileSelection(data.mode);
+
+        // If in replay mode, load recordings
+        if (data.mode === 'replay') {
+            await refreshRecordings();
+            // Set selected recording file if one is configured
+            if (data.recordingFile) {
+                const select = document.getElementById('recordingFileSelect');
+                select.value = data.recordingFile;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading session mode:', error);
+    }
+}
+
+async function updateSessionMode() {
+    const selectedMode = document.querySelector('input[name="sessionMode"]:checked').value;
+
+    try {
+        const body = { mode: selectedMode };
+
+        // If replay mode, include the selected recording file
+        if (selectedMode === 'replay') {
+            const recordingFile = document.getElementById('recordingFileSelect')?.value;
+            if (recordingFile) {
+                body.recordingFile = recordingFile;
+            }
+        }
+
+        const response = await fetch(`${API_BASE}/session/mode`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSessionModeAlert('success', `Session mode set to: ${selectedMode}`);
+            updateReplayFileSelection(selectedMode);
+
+            // Load recordings if switching to replay mode
+            if (selectedMode === 'replay') {
+                await refreshRecordings();
+            }
+        } else {
+            showSessionModeAlert('error', data.error || 'Failed to update session mode');
+        }
+    } catch (error) {
+        console.error('Error updating session mode:', error);
+        showSessionModeAlert('error', 'Error updating session mode: ' + error.message);
+    }
+}
+
+function updateReplayFileSelection(mode) {
+    const replaySection = document.getElementById('replayFileSelection');
+    if (mode === 'replay') {
+        replaySection.classList.remove('hidden');
+    } else {
+        replaySection.classList.add('hidden');
+    }
+}
+
+async function refreshRecordings() {
+    try {
+        const response = await fetch(`${API_BASE}/recordings`);
+        const data = await response.json();
+
+        const select = document.getElementById('recordingFileSelect');
+        select.innerHTML = '<option value="">-- Choose a recording --</option>';
+
+        if (data.recordings && data.recordings.length > 0) {
+            data.recordings.forEach(recording => {
+                const option = document.createElement('option');
+                option.value = recording;
+                option.textContent = recording;
+                select.appendChild(option);
+            });
+        }
+
+        showSessionModeAlert('success', `Found ${data.recordings?.length || 0} recordings`);
+    } catch (error) {
+        console.error('Error loading recordings:', error);
+        showSessionModeAlert('error', 'Failed to load recordings: ' + error.message);
+    }
+}
+
+async function updateRecordingFile() {
+    const selectedFile = document.getElementById('recordingFileSelect').value;
+
+    if (!selectedFile) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/session/mode`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'replay', recordingFile: selectedFile })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSessionModeAlert('success', `Recording file set to: ${selectedFile}`);
+        } else {
+            showSessionModeAlert('error', data.error || 'Failed to set recording file');
+        }
+    } catch (error) {
+        console.error('Error setting recording file:', error);
+        showSessionModeAlert('error', 'Error: ' + error.message);
+    }
+}
+
+function showSessionModeAlert(type, message) {
+    const alertDiv = document.getElementById('sessionModeAlert');
     alertDiv.className = `alert alert-${type}`;
     alertDiv.textContent = message;
     alertDiv.classList.remove('hidden');

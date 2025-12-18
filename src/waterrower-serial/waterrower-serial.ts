@@ -143,21 +143,6 @@ export class WaterRower extends EventEmitter {
             filter(dataPoint => dataPoint !== null)
         );
 
-        // //emit the data event
-        // this.datapoints$.subscribe(d => {
-        //     if (d == null) {
-        //         return;
-        //     }
-
-        //     const datapoint = DataPoints.find(d2 => d2.address == d.address);
-        //     if (datapoint == null) {
-        //         return;
-        //     }
-
-        //     datapoint.value = parseInt(d.value, datapoint.radix);
-        //     this.emit('data', datapoint);
-        // });
-
         // when the WR comes back with _WR_ then consider the WR initialized
         this.reads$
             .pipe(
